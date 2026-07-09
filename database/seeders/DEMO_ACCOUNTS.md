@@ -19,7 +19,7 @@ php artisan db:seed --class=DemoDataSeeder
 | الحقل | القيمة |
 |-------|--------|
 | الهاتف | `07708888000` |
-| الإيميل | `patient@iraq-doctors.test` |
+| الإيميل | `patient@shallal-care.test` |
 | Login | `POST /api/v1/auth/login` |
 
 ## دكتور (لوحة الويب)
@@ -27,7 +27,7 @@ php artisan db:seed --class=DemoDataSeeder
 | الحقل | القيمة |
 |-------|--------|
 | الهاتف | `07708888001` |
-| الإيميل | `doctor@iraq-doctors.test` |
+| الإيميل | `doctor@shallal-care.test` |
 | الدخول | `/doctor/login` |
 
 > **مهم:** المواعيد التجريبية (معلقة/مؤكدة/مكتملة) مربوطة بهذا الحساب فقط. إذا سجّلت دخول بحساب دكتور آخر، صفحة «طلبات المواعيد» ستظهر فارغة.
@@ -37,7 +37,7 @@ php artisan db:seed --class=DemoDataSeeder
 | الحقل | القيمة |
 |-------|--------|
 | الهاتف | `07700000001` |
-| الإيميل | `admin@iraq-doctors.test` |
+| الإيميل | `admin@shallal-care.test` |
 | الدخول | `/admin/login` |
 
 ## بيانات جاهزة بعد السيدر

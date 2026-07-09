@@ -71,7 +71,7 @@
         </form>
 
         <div class="mt-6 text-center text-sm text-gray-500">
-            <p>© 2024 أطباء العراق. جميع الحقوق محفوظة.</p>
+            <p>© 2026 Shallal Care. جميع الحقوق محفوظة.</p>
         </div>
     </div>
 

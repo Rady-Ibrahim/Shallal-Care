@@ -43,7 +43,7 @@ class ProcessSubscriptionsCommand extends Command
                 try {
                     Mail::raw(
                         "تنبيه: اشتراكك في باقة \"{$planName}\" سينتهي بتاريخ {$endDate}. يرجى تجديد الاشتراك من لوحة تحكم الطبيب.",
-                        fn ($message) => $message->to($email)->subject('تنبيه: اشتراكك على وشك الانتهاء — أطباء العراق')
+                        fn ($message) => $message->to($email)->subject('تنبيه: اشتراكك على وشك الانتهاء — Shallal Care')
                     );
                 } catch (\Throwable $e) {
                     $this->warn("Failed to email {$email}: {$e->getMessage()}");

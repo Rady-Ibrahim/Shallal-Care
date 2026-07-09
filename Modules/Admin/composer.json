@@ -1,6 +1,6 @@
 {
     "name": "modules/admin",
-    "description": "Admin Dashboard Module for Iraq Doctors",
+    "description": "Admin Dashboard Module for Shallal Care CMS",
     "type": "library",
     "autoload": {
         "psr-4": {

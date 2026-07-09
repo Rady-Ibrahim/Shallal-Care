@@ -37,7 +37,7 @@
                         <i class="fas fa-user-md text-white"></i>
                     </div>
                     <div>
-                        <h1 class="font-bold text-gray-800">أطباء العراق</h1>
+                        <h1 class="font-bold text-gray-800">Shallal Care</h1>
                         <p class="text-xs text-gray-500">لوحة تحكم الطبيب</p>
                     </div>
                 </div>

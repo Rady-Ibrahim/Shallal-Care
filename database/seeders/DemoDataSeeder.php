@@ -17,10 +17,10 @@ use Modules\Subscription\Models\DoctorSubscription;
 use Modules\Subscription\Models\Subscription;
 
 /**
- * Demo data for Postman / mobile patient API testing.
+ * Demo data for CMS / API testing.
  *
- * Patient API login: 07708888000 / password123  (patient@iraq-doctors.test)
- * Doctor web login:  07708888001 / password123  (doctor@iraq-doctors.test)
+ * Patient API login: 07708888000 / password123  (patient@shallal-care.test)
+ * Doctor web login:  07708888001 / password123  (doctor@shallal-care.test)
  */
 class DemoDataSeeder extends Seeder
 {
@@ -29,7 +29,7 @@ class DemoDataSeeder extends Seeder
         AppSetting::updatePaymentSettings([
             'vodafone_cash_number' => '07708888099',
             'bank_name' => 'مصرف الرافدين',
-            'bank_account_name' => 'أطباء العراق',
+            'bank_account_name' => 'Shallal Care',
             'bank_account_number' => 'IQ12RAFB1234567890',
         ]);
 
@@ -50,7 +50,7 @@ class DemoDataSeeder extends Seeder
             ['phone' => '07708888001'],
             [
                 'name' => 'د. أحمد محمد',
-                'email' => 'doctor@iraq-doctors.test',
+                'email' => 'doctor@shallal-care.test',
                 'password' => Hash::make('password123'),
                 'role' => 'doctor',
                 'status' => 'active',
@@ -62,7 +62,7 @@ class DemoDataSeeder extends Seeder
             ['phone' => '07708888000'],
             [
                 'name' => 'مريض تجريبي',
-                'email' => 'patient@iraq-doctors.test',
+                'email' => 'patient@shallal-care.test',
                 'password' => Hash::make('password123'),
                 'role' => 'patient',
                 'status' => 'active',
@@ -221,7 +221,7 @@ class DemoDataSeeder extends Seeder
         $this->command?->info('Demo data seeded successfully.');
         $this->command?->newLine();
         $this->command?->info('── Postman / API accounts (password: password123) ──');
-        $this->command?->info('Patient: 07708888000  |  patient@iraq-doctors.test');
+        $this->command?->info('Patient: 07708888000  |  patient@shallal-care.test');
         $this->command?->info('Doctor web login: 07708888001 / password123 — لرؤية المواعيد التجريبية');
         $this->command?->info('Admin: أضف/عدّل إعدادات الدفع من /admin/dashboard/subscriptions');
         $this->command?->newLine();

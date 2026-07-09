@@ -1,6 +1,6 @@
 {
     "name": "modules/subscription",
-    "description": "Subscription Module for Iraq Doctors",
+    "description": "Subscription Module for Shallal Care CMS",
     "type": "library",
     "autoload": {
         "psr-4": {

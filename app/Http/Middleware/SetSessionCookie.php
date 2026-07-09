@@ -10,8 +10,8 @@ class SetSessionCookie
     public function handle(Request $request, Closure $next, string $scope = 'default')
     {
         $cookie = match ($scope) {
-            'admin' => env('ADMIN_SESSION_COOKIE', 'iraq_doctors_admin_session'),
-            'doctor' => env('DOCTOR_SESSION_COOKIE', 'iraq_doctors_doctor_session'),
+            'admin' => env('ADMIN_SESSION_COOKIE', 'shallal_care_admin_session'),
+            'doctor' => env('DOCTOR_SESSION_COOKIE', 'shallal_care_doctor_session'),
             default => config('session.cookie'),
         };
 

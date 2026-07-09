@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Iraq Doctors — Patient API",
-    "description": "endpoints تطبيق المريض فقط.\n\n**قبل الاختبار:**\n```bash\nphp artisan migrate\nphp artisan db:seed\n```\n\n**حساب تجريبي:**\n- هاتف: `07708888000`\n- كلمة المرور: `password123`\n\nبعد Login يُحفظ `{{token}}` تلقائياً.\nشغّل **Login (Patient)** أولاً ثم باقي الطلبات.",
+    "name": "Shallal Care — Patient API (legacy)",
+    "description": "endpoints تطبيق المريض (ميراث iraq-doctors).\n\n**قبل الاختبار:**\n```bash\nphp artisan migrate\nphp artisan db:seed\n```\n\n**حساب تجريبي:**\n- هاتف: `07708888000`\n- كلمة المرور: `password123`\n\nبعد Login يُحفظ `{{token}}` تلقائياً.\nشغّل **Login (Patient)** أولاً ثم باقي الطلبات.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
