@@ -10,6 +10,28 @@ class DoctorApprovedMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
+        $user = auth('web')->user();
+
+        if ($user?->isSecretary()) {
+            $staff = $user->clinicStaffMember()->where('status', 'active')->with('doctor')->first();
+
+            if (! $staff || $staff->doctor->status !== 'approved') {
+                if ($request->expectsJson() || $request->is('doctor/api/*')) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => ['code' => 'CLINIC_NOT_ACTIVE', 'message' => 'عيادة الطبيب غير نشطة'],
+                    ], 403);
+                }
+
+                auth('web')->logout();
+
+                return redirect()->route('doctor.login')
+                    ->withErrors(['phone' => 'عيادة الطبيب غير نشطة حالياً.']);
+            }
+
+            return $next($request);
+        }
+
         $doctor = Doctor::where('user_id', auth('web')->id())->first();
 
         if (!$doctor) {

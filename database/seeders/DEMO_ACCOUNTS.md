@@ -1,61 +1,64 @@
-# حسابات تجريبية — Postman / API
-
-شغّل أولاً:
+# حسابات تجريبية — موبايل / Postman
 
 ```bash
 php artisan migrate
 php artisan db:seed
-```
-
-إذا فشل السيدر عند `StaticPageSeeder`، شغّل:
-```bash
+# أو فقط:
 php artisan db:seed --class=DemoDataSeeder
 ```
 
-كلمة المرور لجميع الحسابات: `password123`
+كلمة المرور: `password123`
 
-## مريض (تطبيق الموبايل / Postman)
+## فلو الموبايل البسيط (الافتراضي)
 
-| الحقل | القيمة |
-|-------|--------|
-| الهاتف | `07708888000` |
-| الإيميل | `patient@shallal-care.test` |
-| Login | `POST /api/v1/auth/login` |
+1. **Bootstrap** — `GET /api/v1/mobile/config`  
+   يعرض الميزات المفعّلة (حجز، تقييمات، …).
 
-## دكتور (لوحة الويب)
+2. **زائر (بدون تسجيل)** — `POST /api/v1/auth/guest`
+   ```json
+   { "device_id": "demo-device-001" }
+   ```
+   يرجع `token` + `is_guest: true` — للتصفح فقط.
 
-| الحقل | القيمة |
-|-------|--------|
-| الهاتف | `07708888001` |
-| الإيميل | `doctor@shallal-care.test` |
-| الدخول | `/doctor/login` |
+3. **تصفح بدون توكن** (عام):
+   - `GET /api/v1/governorates`
+   - `GET /api/v1/doctors`
+   - `GET /api/v1/doctors/{id}`
+   - `GET /api/v1/doctors/{id}/branches`
 
-> **مهم:** المواعيد التجريبية (معلقة/مؤكدة/مكتملة) مربوطة بهذا الحساب فقط. إذا سجّلت دخول بحساب دكتور آخر، صفحة «طلبات المواعيد» ستظهر فارغة.
+4. **تسجيل دخول مريض** (اختياري) — `POST /api/v1/auth/login`
+   | الحقل | القيمة |
+   |-------|--------|
+   | الهاتف | `01088880000` |
+   | الإيميل | `patient@shallal-care.test` |
 
-## أدمن (لوحة الويب)
+## ميزات معطّلة افتراضياً (الكود موجود)
 
-| الحقل | القيمة |
-|-------|--------|
-| الهاتف | `07700000001` |
-| الإيميل | `admin@shallal-care.test` |
-| الدخول | `/admin/login` |
+في `.env` — فعّلها للاختبار لاحقاً:
 
-## بيانات جاهزة بعد السيدر
+```env
+MOBILE_BOOKING_ENABLED=true      # حجز المواعيد
+MOBILE_REVIEWS_ENABLED=true      # التقييمات
+MOBILE_MEDICAL_HISTORY_ENABLED=true
+MOBILE_PUSH_ENABLED=true
+```
 
-| المتغير | الوصف |
-|---------|--------|
-| `doctor_id` | طبيب معتمد بفرع وجدول |
-| `schedule_id` | جدول يوم الأحد |
-| `branch_id` | العيادة الرئيسية — بغداد |
-| `appointment_id` | موعد **مكتمل** (سجل طبي + تقييم) |
+عند التعطيل: الـ API يرجع `403 FEATURE_DISABLED` — **لم يُحذف أي كود**.
 
-بعد `php artisan db:seed --class=DemoDataSeeder` تظهر الـ IDs الفعلية في الـ terminal.
+## حجز (عند التفعيل)
 
-## فلو المريض في Postman
+1. Login أو Guest token
+2. `GET /api/v1/doctors/{id}/schedule`
+3. `POST /api/v1/appointments` مع `doctor_id`, `schedule_id`, `appointment_date`, `appointment_time`
 
-1. **Login** → يحفظ `token` تلقائياً
-2. **Search Doctors** → قائمة أطباء
-3. **My Appointments** → 3 مواعيد (مكتمل / مؤكد / معلق)
-4. **Patient History** → سجل طبي للموعد المكتمل
-5. **Create Review** → على الموعد المكتمل (مرة واحدة)
-6. **Book Appointment** → حجز جديد (`schedule_id` + تاريخ مستقبلي)
+## عيادة (ويب)
+
+| الدور | الهاتف | الرابط |
+|-------|--------|--------|
+| طبيب | `01088880001` | `/doctor/login` |
+| طبيب 2 | `01088880002` | `/doctor/login` |
+| أدمن | `07700000001` | `/admin/login` |
+
+## IDs بعد السيدر
+
+تظهر في terminal بعد `DemoDataSeeder`: `doctor_id`, `doctor2_id`, `schedule_id`, `branch_id`, `appointment_id`.

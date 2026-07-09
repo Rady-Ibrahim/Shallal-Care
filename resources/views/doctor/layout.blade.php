@@ -7,7 +7,7 @@
     <title>@yield('title', 'لوحة تحكم الطبيب')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    @include('partials.dashboard-ui', ['confirmColor' => '#14b8a6'])
+    @include('partials.dashboard-ui', ['confirmColor' => '#2563eb'])
     @include('partials.dashboard-api', [
         'loginUrl' => route('doctor.login'),
         'csrfRefreshUrl' => '/doctor/api/csrf-token',
@@ -18,7 +18,7 @@
             font-family: 'Cairo', sans-serif;
         }
         .sidebar-link.active {
-            background: linear-gradient(90deg, #14b8a6 0%, #06b6d4 100%);
+            background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%);
             color: white;
         }
         .sidebar-link:hover:not(.active) {
@@ -33,12 +33,15 @@
             <!-- Logo -->
             <div class="p-6 border-b">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-user-md text-white"></i>
+                    <div class="w-10 h-10 bg-gradient-to-r from-blue-700 to-blue-500 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-clinic-medical text-white"></i>
                     </div>
                     <div>
                         <h1 class="font-bold text-gray-800">Shallal Care</h1>
-                        <p class="text-xs text-gray-500">لوحة تحكم الطبيب</p>
+                        <p class="text-xs text-gray-500">{{ ($isSecretary ?? false) ? 'لوحة السكرتير' : 'لوحة العيادة' }}</p>
+                        @if(!empty($clinicBranch))
+                            <p class="text-xs text-blue-600 font-semibold">{{ $clinicBranch->branch_name }}</p>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -54,22 +57,43 @@
                     <i class="fas fa-home w-5"></i>
                     <span>الرئيسية</span>
                 </a>
+                @if(($clinicContext ?? null)?->hasPermission('reception.view'))
+                <a href="/doctor/dashboard/reception" class="{{ $navClass(request()->routeIs('doctor.reception.*')) }}">
+                    <i class="fas fa-door-open w-5"></i>
+                    <span>الاستقبال</span>
+                </a>
+                @endif
+                @if(($clinicContext ?? null)?->hasPermission('queue.view'))
+                <a href="/doctor/dashboard/queue" class="{{ $navClass(request()->routeIs('doctor.queue.*')) }}">
+                    <i class="fas fa-list-ol w-5"></i>
+                    <span>الدور</span>
+                </a>
+                @endif
+                @if(($clinicContext ?? null)?->hasPermission('finance.view'))
+                <a href="/doctor/dashboard/finance" class="{{ $navClass(request()->routeIs('doctor.finance.*')) }}">
+                    <i class="fas fa-cash-register w-5"></i>
+                    <span>خزنة الفرع</span>
+                </a>
+                @endif
+                @if(($clinicContext ?? null)?->hasPermission('lab.view'))
+                <a href="/doctor/dashboard/orders" class="{{ $navClass(request()->routeIs('doctor.orders.*')) }}">
+                    <i class="fas fa-vials w-5"></i>
+                    <span>تحاليل وأشعة</span>
+                </a>
+                @endif
+                @if(($clinicContext ?? null)?->hasPermission('reports.view'))
+                <a href="/doctor/dashboard/reports" class="{{ $navClass(request()->routeIs('doctor.reports.*')) }}">
+                    <i class="fas fa-chart-line w-5"></i>
+                    <span>التقارير</span>
+                </a>
+                @endif
                 <a href="/doctor/dashboard/patients" class="{{ $navClass(request()->routeIs('doctor.patients.*')) }}">
                     <i class="fas fa-users w-5"></i>
                     <span>المرضى</span>
                 </a>
-                <a href="/doctor/dashboard/requests" class="{{ $navClass(request()->routeIs('doctor.requests')) }}">
-                    <i class="fas fa-inbox w-5"></i>
-                    <span class="flex-1">طلبات المواعيد</span>
-                    <span id="pendingRequestsBadge" class="hidden bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">0</span>
-                </a>
-                <a href="/doctor/dashboard/subscription/plans" class="{{ $navClass(request()->routeIs('doctor.subscription.*')) }}">
-                    <i class="fas fa-crown w-5"></i>
-                    <span>الاشتراكات</span>
-                </a>
                 <a href="/doctor/dashboard/prescriptions" class="{{ $navClass(request()->routeIs('doctor.prescriptions.*')) }}">
                     <i class="fas fa-prescription w-5"></i>
-                    <span>الوصفات</span>
+                    <span>الروشتات</span>
                 </a>
                 <a href="/doctor/dashboard/records" class="{{ $navClass(request()->routeIs('doctor.records.*')) }}">
                     <i class="fas fa-file-medical w-5"></i>
@@ -79,6 +103,16 @@
                     <i class="fas fa-calendar-alt w-5"></i>
                     <span>التقويم</span>
                 </a>
+                @if($isClinicOwner ?? true)
+                <a href="/doctor/dashboard/staff" class="{{ $navClass(request()->routeIs('doctor.staff.*')) }}">
+                    <i class="fas fa-user-nurse w-5"></i>
+                    <span>السكرتارية</span>
+                </a>
+                <a href="/doctor/dashboard/subscription/plans" class="{{ $navClass(request()->routeIs('doctor.subscription.*')) }}">
+                    <i class="fas fa-crown w-5"></i>
+                    <span>الاشتراك</span>
+                </a>
+                @endif
                 <a href="/doctor/dashboard/settings" class="{{ $navClass(request()->routeIs('doctor.settings')) }}">
                     <i class="fas fa-cog w-5"></i>
                     <span>الإعدادات</span>
@@ -88,12 +122,12 @@
             <!-- User Info -->
             <div class="p-4 border-t">
                 <div class="flex items-center gap-3 mb-4">
-                    <div class="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user text-teal-600"></i>
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-blue-600"></i>
                     </div>
                     <div class="flex-1">
-                        <p class="font-semibold text-gray-800 text-sm" id="doctorName">د. {{ auth()->user()->name ?? 'الاسم' }}</p>
-                        <p class="text-xs text-gray-500">طبيب</p>
+                        <p class="font-semibold text-gray-800 text-sm" id="doctorName">{{ auth()->user()->name ?? 'الاسم' }}</p>
+                        <p class="text-xs text-gray-500">{{ ($isSecretary ?? false) ? 'سكرتير' : 'طبيب' }}</p>
                     </div>
                 </div>
                 <form id="logoutForm" method="POST" action="{{ route('doctor.logout') }}" class="w-full">

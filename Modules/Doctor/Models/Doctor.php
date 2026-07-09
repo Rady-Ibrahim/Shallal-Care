@@ -15,10 +15,12 @@ class Doctor extends Model
 
     protected $fillable = [
         'user_id',
+        'clinic_name',
         'speciality_id',
         'bio_ar',
         'bio_en',
         'experience_years',
+        'syndicate_number',
         'consultation_fee',
         'consultation_type',
         'rating',
@@ -30,6 +32,8 @@ class Doctor extends Model
         'subscription_id',
         'license_document',
         'clinic_image',
+        'signature_path',
+        'stamp_path',
         'reject_reason',
     ];
 
@@ -92,6 +96,11 @@ class Doctor extends Model
     public function doctorSubscriptions()
     {
         return $this->hasMany(\Modules\Subscription\Models\DoctorSubscription::class);
+    }
+
+    public function staffMembers()
+    {
+        return $this->hasMany(\Modules\Doctor\Models\ClinicStaffMember::class);
     }
 
     public function activeSubscription()

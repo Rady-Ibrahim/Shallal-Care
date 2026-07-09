@@ -2,6 +2,8 @@
 
 namespace Modules\Doctor\Http\Controllers\Doctor;
 
+use App\Traits\ApiResponse;
+use App\Traits\ResolvesClinicDashboard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -10,11 +12,10 @@ use Modules\Auth\Models\User;
 use Modules\Doctor\Models\Doctor;
 use Modules\Doctor\Services\DoctorDashboardService;
 use Modules\Appointment\Services\Api\AppointmentService;
-use App\Traits\ApiResponse;
 
 class DoctorDashboardController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesClinicDashboard;
 
     public function __construct(
         private DoctorDashboardService $doctorDashboardService,
@@ -23,7 +24,7 @@ class DoctorDashboardController extends Controller
 
     protected function resolveDoctor(): Doctor
     {
-        return Doctor::where('user_id', auth('web')->id())->firstOrFail();
+        return $this->clinicContext()->doctor;
     }
 
     public function metrics(): JsonResponse

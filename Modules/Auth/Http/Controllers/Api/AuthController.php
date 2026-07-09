@@ -13,6 +13,7 @@ use Modules\Auth\Http\Requests\Api\UpdateProfileRequest;
 use Modules\Auth\Http\Requests\Api\UpdatePasswordRequest;
 use Modules\Auth\Http\Requests\Api\ForgotPasswordRequest;
 use Modules\Auth\Http\Requests\Api\ResetPasswordRequest;
+use Modules\Auth\Http\Requests\Api\GuestLoginRequest;
 use Modules\Auth\Http\Requests\Api\UploadAvatarRequest;
 use Modules\Auth\Services\Api\AuthService;
 use Modules\Auth\Models\User;
@@ -65,6 +66,22 @@ class AuthController extends Controller
                 401
             );
         }
+
+        if ($user->isClinicGhost()) {
+            return $this->error(
+                'هذا الحساب مرتبط بالعيادة فقط — سجّل حساباً من التطبيق أو استخدم وضع الزائر',
+                'CLINIC_GHOST_ACCOUNT',
+                403
+            );
+        }
+
+        if ($user->isGuest()) {
+            return $this->error(
+                'حساب زائر — استخدم POST /auth/guest أو أنشئ حساباً كاملاً',
+                'GUEST_ACCOUNT',
+                403
+            );
+        }
     
         if ($user->email && !$user->email_verified_at) {
             return $this->error(
@@ -96,9 +113,31 @@ class AuthController extends Controller
                 'phone' => $user->phone,
                 'email' => $user->email,
                 'role' => $user->role,
+                'is_guest' => false,
             ],
             'token' => $token,
         ], 'تم الدخول بنجاح');
+    }
+
+    public function guest(GuestLoginRequest $request): JsonResponse
+    {
+        try {
+            $user = $this->authService->loginAsGuest($request->device_id);
+            $token = $this->authService->createToken($user, config('mobile.guest.token_name', 'guest_token'));
+
+            return $this->success([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                    'is_guest' => true,
+                ],
+                'token' => $token,
+                'mode' => 'guest',
+            ], 'مرحباً — تصفّح بدون تسجيل');
+        } catch (\Throwable $e) {
+            return $this->serverError('تعذر إنشاء جلسة الزائر');
+        }
     }
 
     public function sendOtp(SendOtpRequest $request): JsonResponse
@@ -186,6 +225,7 @@ class AuthController extends Controller
             'phone'     => $user->phone,
             'email'     => $user->email,
             'role'      => $user->role,
+            'is_guest'  => (bool) $user->is_guest,
             'status'    => $user->status,
             'birthdate' => $user->birthdate,
             'gender'    => $user->gender,

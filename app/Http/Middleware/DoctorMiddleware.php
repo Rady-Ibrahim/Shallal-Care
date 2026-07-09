@@ -9,17 +9,15 @@ class DoctorMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        // شيك على جلسة الـ Web فقط - مالناش دعوة بـ Sanctum
         if (!auth('web')->check()) {
             return redirect()->route('doctor.login');
         }
 
         $user = auth('web')->user();
         
-        // التأكد من أن المستخدم دكتور فعلاً
-        if (!$user || $user->role !== 'doctor') {
+        if (!$user || !$user->isClinicPanelUser()) {
             auth('web')->logout();
-            return redirect()->route('doctor.login')->withErrors(['phone' => 'غير مصرح لك بالدخول كدكتور.']);
+            return redirect()->route('doctor.login')->withErrors(['phone' => 'غير مصرح لك بالدخول إلى لوحة العيادة.']);
         }
 
         return $next($request);

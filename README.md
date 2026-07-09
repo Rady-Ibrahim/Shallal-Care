@@ -21,7 +21,7 @@
 - إعادة البراند إلى Shallal Care
 - حذف أمر ranking المنتجات الميت
 
-خريطة التنفيذ التالية: [`docs/CMS_ROADMAP.md`](docs/CMS_ROADMAP.md)  
+خريطة التنفيذ: [`docs/PRODUCTION_PLAN.md`](docs/PRODUCTION_PLAN.md)  
 فلو الحالي: [`docs/USER_FLOWS.md`](docs/USER_FLOWS.md)
 
 ---

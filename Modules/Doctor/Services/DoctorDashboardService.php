@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Appointment\Models\Appointment;
 use Modules\Auth\Models\User;
+use Modules\Doctor\Models\ClinicPatient;
 use Modules\Doctor\Models\Doctor;
 use Modules\Doctor\Models\DoctorSchedule;
 use Modules\MedicalRecord\Models\MedicalRecord;
@@ -114,7 +115,8 @@ class DoctorDashboardService
         $query = User::where('role', 'patient')
             ->where(function ($q) use ($doctorId, $doctor) {
                 $q->whereHas('appointments', fn ($sub) => $sub->where('doctor_id', $doctorId))
-                    ->orWhere('created_by_doctor_id', $doctor->user_id);
+                    ->orWhere('created_by_doctor_id', $doctor->user_id)
+                    ->orWhereIn('id', ClinicPatient::where('doctor_id', $doctorId)->pluck('patient_id'));
             })
             ->withCount(['appointments as total_appointments' => fn ($q) => $q->where('doctor_id', $doctorId)])
             ->with(['appointments' => fn ($q) => $q->where('doctor_id', $doctorId)->orderByDesc('appointment_date')->limit(1)]);
@@ -135,8 +137,11 @@ class DoctorDashboardService
 
         $paginator = $query->paginate($limit);
 
-        $paginator->getCollection()->transform(function (User $patient) {
+        $paginator->getCollection()->transform(function (User $patient) use ($doctorId) {
             $lastAppointment = $patient->appointments->first();
+            $clinicPatient = ClinicPatient::where('doctor_id', $doctorId)
+                ->where('patient_id', $patient->id)
+                ->first();
 
             return [
                 'id' => $patient->id,
@@ -144,6 +149,7 @@ class DoctorDashboardService
                 'phone' => $patient->phone,
                 'email' => $patient->email,
                 'is_ghost' => (bool) $patient->is_ghost,
+                'file_number' => $clinicPatient?->file_number,
                 'total_appointments' => $patient->total_appointments,
                 'last_appointment_date' => $lastAppointment?->appointment_date?->format('Y-m-d'),
                 'last_visit' => $lastAppointment?->appointment_date?->format('Y-m-d'),
@@ -161,11 +167,16 @@ class DoctorDashboardService
         $hasAccess = Appointment::where('doctor_id', $doctorId)
             ->where('patient_id', $patientId)
             ->exists()
-            || $patient->created_by_doctor_id === $doctor->user_id;
+            || $patient->created_by_doctor_id === $doctor->user_id
+            || ClinicPatient::where('doctor_id', $doctorId)->where('patient_id', $patientId)->exists();
 
         if (!$hasAccess) {
             throw new \Illuminate\Database\Eloquent\ModelNotFoundException();
         }
+
+        $clinicPatient = ClinicPatient::where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->first();
 
         $appointments = Appointment::where('doctor_id', $doctorId)
             ->where('patient_id', $patientId)
@@ -188,7 +199,11 @@ class DoctorDashboardService
             'age' => $age,
             'address' => $patient->address,
             'is_ghost' => (bool) $patient->is_ghost,
-            'medical_history' => null,
+            'file_number' => $clinicPatient?->file_number,
+            'qr_token' => $clinicPatient?->qr_token,
+            'allergies' => $clinicPatient?->allergies,
+            'chronic_conditions' => $clinicPatient?->chronic_conditions,
+            'medical_history' => $clinicPatient?->chronic_conditions,
             'total_appointments' => $appointments->count(),
             'total_prescriptions' => $medicalRecords->where('record_type', 'prescription')->count(),
             'total_records' => $medicalRecords->count(),
@@ -456,19 +471,96 @@ class DoctorDashboardService
     public function createPrescription(int $doctorId, int $userId, array $data): MedicalRecord
     {
         return DB::transaction(function () use ($doctorId, $userId, $data) {
-            $appointment = $this->ensureWalkInAppointment($doctorId, (int) $data['patient_id']);
+            $appointmentId = null;
+            $branchId = $data['branch_id'] ?? null;
+            $clinicBookingId = $data['clinic_booking_id'] ?? null;
+
+            if (empty($clinicBookingId)) {
+                $appointment = $this->ensureWalkInAppointment($doctorId, (int) $data['patient_id']);
+                $appointmentId = $appointment->id;
+            }
 
             return MedicalRecord::create([
-                'appointment_id' => $appointment->id,
+                'appointment_id' => $appointmentId,
                 'doctor_id' => $doctorId,
+                'branch_id' => $branchId,
                 'patient_id' => $data['patient_id'],
+                'clinic_booking_id' => $clinicBookingId,
                 'record_type' => 'prescription',
+                'prescription_number' => $this->generatePrescriptionNumber($doctorId),
                 'diagnosis' => $data['diagnosis'] ?? null,
                 'prescription' => $data['medicines'] ?? [],
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $userId,
             ]);
         });
+    }
+
+    public function getPrescriptionForPrint(int $doctorId, int $recordId, ?\Modules\Doctor\Models\DoctorBranch $branch = null): array
+    {
+        $record = MedicalRecord::where('doctor_id', $doctorId)
+            ->where('record_type', 'prescription')
+            ->with(['patient', 'doctor.user', 'doctor.speciality'])
+            ->findOrFail($recordId);
+
+        $doctor = $record->doctor;
+        $branch = $branch ?? $doctor->primaryBranch;
+
+        if (! $record->prescription_number) {
+            $record->update(['prescription_number' => $this->generatePrescriptionNumber($doctorId)]);
+            $record->refresh();
+        }
+
+        $medicines = collect($record->prescription ?? [])->map(function ($item) {
+            return [
+                'name' => $item['name'] ?? $item['medicine_name'] ?? '-',
+                'dosage' => $item['dosage'] ?? '',
+                'frequency' => $item['frequency'] ?? $item['times'] ?? '',
+                'duration' => $item['duration'] ?? $item['days'] ?? '',
+                'instructions' => $item['instructions'] ?? $item['notes'] ?? '',
+            ];
+        })->all();
+
+        return [
+            'id' => $record->id,
+            'number' => $record->prescription_number,
+            'diagnosis' => $record->diagnosis,
+            'notes' => $record->notes,
+            'medicines' => $medicines,
+            'created_at' => $record->created_at,
+            'patient' => [
+                'name' => $record->patient?->name,
+                'phone' => $record->patient?->phone,
+                'age' => $record->patient?->birthdate?->age,
+                'gender' => $record->patient?->gender === 'male' ? 'ذكر' : ($record->patient?->gender === 'female' ? 'أنثى' : null),
+            ],
+            'doctor' => [
+                'name' => $doctor->user?->name,
+                'speciality' => $doctor->speciality?->name_ar,
+                'experience_years' => $doctor->experience_years,
+                'syndicate_number' => $doctor->syndicate_number,
+                'signature_url' => $doctor->signature_path ? asset('storage/'.$doctor->signature_path) : null,
+                'stamp_url' => $doctor->stamp_path ? asset('storage/'.$doctor->stamp_path) : null,
+                'logo_url' => $doctor->clinic_image ? asset('storage/'.$doctor->clinic_image) : null,
+            ],
+            'clinic' => [
+                'name' => $doctor->clinic_name ?: ($branch?->branch_name ?? 'عيادة '.$doctor->user?->name),
+                'branch_name' => $branch?->branch_name,
+                'address' => $branch?->address ?? $doctor->address,
+                'phone' => $branch?->phone,
+                'governorate' => $branch?->governorate,
+            ],
+        ];
+    }
+
+    protected function generatePrescriptionNumber(int $doctorId): string
+    {
+        $prefix = config('clinic.prescription.number_prefix', 'RX');
+        $count = MedicalRecord::where('doctor_id', $doctorId)
+            ->where('record_type', 'prescription')
+            ->count() + 1;
+
+        return sprintf('%s-%s-%04d', $prefix, $doctorId, $count);
     }
 
     public function getPrescription(int $doctorId, int $recordId): array

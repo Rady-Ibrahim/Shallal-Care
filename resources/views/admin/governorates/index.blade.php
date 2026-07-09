@@ -2,7 +2,7 @@
 
 @section('title', 'إدارة المحافظات')
 @section('page-title', 'المحافظات')
-@section('page-description', 'إدارة محافظات العراق')
+@section('page-description', 'إدارة محافظات مصر')
 
 @section('content')
 <div class="bg-white rounded-xl shadow-sm p-6 mb-6">

@@ -234,9 +234,40 @@ class AuthService
         return true;
     }
 
-    public function createToken(User $user): string
+    public function createToken(User $user, string $name = 'auth_token'): string
     {
-        return $user->createToken('auth_token')->plainTextToken;
+        return $user->createToken($name)->plainTextToken;
+    }
+
+    public function loginAsGuest(string $deviceId): User
+    {
+        $user = User::where('guest_device_id', $deviceId)->first();
+
+        if ($user) {
+            if (! $user->isActive()) {
+                throw new \RuntimeException('حساب الزائر غير نشط');
+            }
+
+            return $user;
+        }
+
+        return User::create([
+            'name' => config('mobile.guest.name', 'زائر'),
+            'phone' => $this->syntheticGuestPhone($deviceId),
+            'password' => Hash::make(Str::random(48)),
+            'role' => 'patient',
+            'status' => 'active',
+            'is_guest' => true,
+            'guest_device_id' => $deviceId,
+            'email_verified_at' => now(),
+        ]);
+    }
+
+    private function syntheticGuestPhone(string $deviceId): string
+    {
+        $suffix = str_pad((string) (abs(crc32($deviceId)) % 100000000), 8, '0', STR_PAD_LEFT);
+
+        return '+20998'.$suffix;
     }
 
     public function revokeAllTokens(User $user): void

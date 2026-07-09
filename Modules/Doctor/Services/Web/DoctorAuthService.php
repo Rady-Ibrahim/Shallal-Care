@@ -116,17 +116,33 @@ class DoctorAuthService
 
     public function login(string $phone, string $password): ?User
     {
-        $user = User::where('phone', $phone)->first();
+        $normalized = \App\Support\PhoneNormalizer::toE164($phone);
+        $local = \App\Support\PhoneNormalizer::toLocal($phone);
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        $user = User::where('phone', $phone)
+            ->orWhere('phone', $normalized)
+            ->orWhere('phone', $local)
+            ->first();
+
+        if (! $user || ! Hash::check($password, $user->password)) {
             return null;
         }
 
-        if (!$user->isDoctor() || !$user->isActive()) {
+        if (! $user->isActive()) {
             return null;
         }
 
-        return $user;
+        if ($user->isDoctor()) {
+            return $user;
+        }
+
+        if ($user->isSecretary()) {
+            $staff = $user->clinicStaffMember()->where('status', 'active')->first();
+
+            return $staff ? $user : null;
+        }
+
+        return null;
     }
 
     public function resubmitDocuments(int $userId, ?UploadedFile $licenseDocument = null, ?UploadedFile $clinicImage = null): Doctor
@@ -155,6 +171,10 @@ class DoctorAuthService
 
     public function getPostLoginRoute(User $user): string
     {
+        if ($user->isSecretary()) {
+            return 'doctor.dashboard';
+        }
+
         if ($this->needsEmailVerification($user)) {
             return 'doctor.verify-email';
         }

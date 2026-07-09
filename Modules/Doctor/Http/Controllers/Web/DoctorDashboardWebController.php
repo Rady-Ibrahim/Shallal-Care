@@ -2,20 +2,20 @@
 
 namespace Modules\Doctor\Http\Controllers\Web;
 
+use App\Support\ClinicDashboardContext;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
-use Modules\Doctor\Models\Doctor;
 
 class DoctorDashboardWebController extends Controller
 {
-    protected function resolveDoctor(): Doctor
+    protected function context(): ClinicDashboardContext
     {
-        return Doctor::where('user_id', auth('web')->id())->firstOrFail();
+        return ClinicDashboardContext::resolve();
     }
 
     public function dashboard(): View
     {
-        return view('doctor.dashboard', ['doctor' => $this->resolveDoctor()]);
+        return view('doctor.dashboard', ['doctor' => $this->context()->doctor]);
     }
 
     public function calendar(): View
@@ -25,7 +25,7 @@ class DoctorDashboardWebController extends Controller
 
     public function settings(): View
     {
-        return view('doctor.settings', ['doctor' => $this->resolveDoctor()]);
+        return view('doctor.settings', ['doctor' => $this->context()->doctor]);
     }
 
     public function patients(): View
@@ -83,13 +83,69 @@ class DoctorDashboardWebController extends Controller
         return view('doctor.records.edit', ['recordId' => $id]);
     }
 
+    public function staff(): View
+    {
+        return view('doctor.staff.index', [
+            'permissionLabels' => \Modules\Doctor\Support\SecretaryPermissions::labels(),
+            'defaultPermissions' => \Modules\Doctor\Support\SecretaryPermissions::DEFAULT,
+        ]);
+    }
+
     public function subscriptionPlans(): View
     {
-        return view('doctor.subscription.plans', ['doctor' => $this->resolveDoctor()]);
+        return view('doctor.subscription.plans', ['doctor' => $this->context()->doctor]);
     }
 
     public function requests(): View
     {
         return view('doctor.requests.index');
+    }
+
+    public function reception(): View
+    {
+        return view('doctor.reception.index');
+    }
+
+    public function queue(): View
+    {
+        return view('doctor.queue.index');
+    }
+
+    public function finance(): View
+    {
+        return view('doctor.finance.index', [
+            'paymentMethods' => config('clinic.payment_methods', []),
+            'expenseCategories' => config('clinic.expense_categories', []),
+            'canManageFinance' => $this->context()->hasPermission('finance.collect'),
+        ]);
+    }
+
+    public function visit(int $bookingId): View
+    {
+        return view('doctor.visits.show', [
+            'bookingId' => $bookingId,
+            'canManageVisit' => $this->context()->hasPermission('records.manage'),
+        ]);
+    }
+
+    public function patientFile(int $id): View
+    {
+        return view('doctor.patients.file', [
+            'patientId' => $id,
+        ]);
+    }
+
+    public function orders(): View
+    {
+        return view('doctor.orders.index', [
+            'canManageOrders' => $this->context()->hasPermission('lab.manage'),
+            'labTests' => config('clinic.lab_tests', []),
+            'radiologyTypes' => config('clinic.radiology_types', []),
+        ]);
+    }
+
+    public function reports(): View
+    {
+        return view('doctor.reports.index');
     }
 }

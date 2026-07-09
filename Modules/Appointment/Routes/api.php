@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Appointment\Http\Controllers\Api\AppointmentController;
 
-Route::middleware('auth:sanctum')->prefix('appointments')->group(function () {
+Route::middleware(['auth:sanctum', 'mobile.feature:booking'])->prefix('appointments')->group(function () {
     Route::post('/', [AppointmentController::class, 'book']);
     Route::get('/my', [AppointmentController::class, 'myAppointments']);
     Route::get('/{id}', [AppointmentController::class, 'show']);

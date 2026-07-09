@@ -48,7 +48,7 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2">رقم الهاتف</label>
                         <input type="tel" name="phone" value="{{ old('phone') }}" required
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                            placeholder="07xxxxxxxxx">
+                            placeholder="01xxxxxxxxx">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">البريد الإلكتروني <span class="text-gray-400 font-normal">(اختياري)</span></label>
@@ -114,7 +114,7 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2">المنطقة</label>
                         <input type="text" name="area" value="{{ old('area') }}" required
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                            placeholder="مثال: الكرادة، المنصور">
+                            placeholder="مثال: مدينة نصر، المعادي">
                     </div>
                 </div>
                 <div class="mt-5">
@@ -128,12 +128,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">خط العرض (Latitude)</label>
-                        <input type="number" step="any" name="latitude" id="latitude" value="{{ old('latitude', '33.3152') }}" required readonly
+                        <input type="number" step="any" name="latitude" id="latitude" value="{{ old('latitude', config('clinic.map.default_latitude')) }}" required readonly
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">خط الطول (Longitude)</label>
-                        <input type="number" step="any" name="longitude" id="longitude" value="{{ old('longitude', '44.3661') }}" required readonly
+                        <input type="number" step="any" name="longitude" id="longitude" value="{{ old('longitude', config('clinic.map.default_longitude')) }}" required readonly
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
                     </div>
                 </div>
@@ -171,10 +171,11 @@
     <script>
         const latInput = document.getElementById('latitude');
         const lngInput = document.getElementById('longitude');
-        const defaultLat = parseFloat(latInput.value) || 33.3152;
-        const defaultLng = parseFloat(lngInput.value) || 44.3661;
+        const defaultLat = parseFloat(latInput.value) || {{ config('clinic.map.default_latitude') }};
+        const defaultLng = parseFloat(lngInput.value) || {{ config('clinic.map.default_longitude') }};
+        const defaultZoom = {{ config('clinic.map.default_zoom') }};
 
-        const map = L.map('clinic-map').setView([defaultLat, defaultLng], 12);
+        const map = L.map('clinic-map').setView([defaultLat, defaultLng], defaultZoom);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'

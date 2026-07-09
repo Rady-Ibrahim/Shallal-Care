@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin'            => \App\Http\Middleware\AdminMiddleware::class,
             'doctor'           => \App\Http\Middleware\DoctorMiddleware::class,
+            'clinic.panel'     => \App\Http\Middleware\ClinicPanelMiddleware::class,
+            'clinic.context'   => \App\Http\Middleware\ShareClinicDashboardContext::class,
+            'clinic.permission'=> \App\Http\Middleware\ClinicPermissionMiddleware::class,
+            'clinic.owner'     => \App\Http\Middleware\ClinicOwnerMiddleware::class,
+            'mobile.feature'   => \App\Http\Middleware\MobileFeatureMiddleware::class,
             'doctor.approved'  => \App\Http\Middleware\DoctorApprovedMiddleware::class,
             'doctor.email.verified' => \App\Http\Middleware\DoctorEmailVerifiedMiddleware::class,
             'session.scope'       => \App\Http\Middleware\SetSessionCookie::class,

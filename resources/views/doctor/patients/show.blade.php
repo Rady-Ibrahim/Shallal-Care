@@ -25,6 +25,7 @@
                 <div class="flex-1">
                     <h2 class="text-2xl font-bold text-gray-800" id="patientName">جاري التحميل...</h2>
                     <p class="text-gray-600 mt-1" id="patientPhone">-</p>
+                    <p class="text-sm text-blue-600 font-mono font-semibold mt-1" id="fileNumber"></p>
                     <div class="flex gap-4 mt-4">
                         <div>
                             <p class="text-sm text-gray-600">العمر</p>
@@ -82,15 +83,15 @@
         <!-- Quick Actions -->
         <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">إجراءات سريعة</h3>
-            <div class="space-y-3">
-                <a href="/doctor/dashboard/prescriptions/create?patient_id=${patientId}" class="block w-full px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition text-center">
+            <div class="space-y-3" id="quickActions">
+                <a id="linkFile" href="#" class="block w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center">
+                    <i class="fas fa-qrcode ml-2"></i>ملف المريض + QR
+                </a>
+                <a id="linkPrescription" href="#" class="block w-full px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition text-center">
                     <i class="fas fa-prescription ml-2"></i>وصفة جديدة
                 </a>
-                <a href="/doctor/dashboard/records/create?patient_id=${patientId}" class="block w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center">
+                <a id="linkRecord" href="#" class="block w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-center">
                     <i class="fas fa-file-medical ml-2"></i>سجل طبي جديد
-                </a>
-                <a href="/doctor/dashboard/appointments/new?patient_id=${patientId}" class="block w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-center">
-                    <i class="fas fa-calendar-plus ml-2"></i>موعد جديد
                 </a>
             </div>
         </div>
@@ -115,6 +116,13 @@
         </div>
 
         <!-- Medical Records -->
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">السجل الزمني</h3>
+            <div id="patientTimeline" class="space-y-3">
+                <p class="text-gray-500">جاري التحميل...</p>
+            </div>
+        </div>
+
         <div class="bg-white rounded-xl shadow-sm p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">السجلات الطبية</h3>
             <div id="medicalRecords" class="space-y-3">
@@ -160,6 +168,9 @@ function renderPatientDetails(patient) {
     // Basic Info
     document.getElementById('patientName').textContent = patient.name || 'غير محدد';
     document.getElementById('patientPhone').textContent = patient.phone || '-';
+    if (patient.file_number) {
+        document.getElementById('fileNumber').textContent = 'ملف: ' + patient.file_number;
+    }
     document.getElementById('patientAge').textContent = patient.age || '-';
     document.getElementById('patientGender').textContent = patient.gender === 'male' ? 'ذكر' : 'أنثى';
     document.getElementById('patientPhoneFull').textContent = patient.phone || '-';
@@ -178,12 +189,31 @@ function renderPatientDetails(patient) {
 
     // Medical Records
     renderMedicalRecords(patient.medical_records || []);
+    loadTimeline();
 
-    // Update Quick Actions
-    document.querySelectorAll('a[href*="patient_id"]').forEach(link => {
-        link.href = link.href.replace('${patientId}', patientId);
-    });
+    document.getElementById('linkFile').href = `/doctor/dashboard/patients/${patientId}/file`;
+    document.getElementById('linkPrescription').href = `/doctor/dashboard/prescriptions/create?patient_id=${patientId}`;
+    document.getElementById('linkRecord').href = `/doctor/dashboard/records/create?patient_id=${patientId}`;
 }
+
+async function loadTimeline() {
+    const res = await apiCall(`/doctor/api/patients/${patientId}/timeline`);
+    const box = document.getElementById('patientTimeline');
+    const items = res?.data || [];
+    if (!items.length) {
+        box.innerHTML = '<p class="text-gray-500">لا توجد زيارات أو سجلات</p>';
+        return;
+    }
+    box.innerHTML = items.slice(0, 8).map(item => `
+        <div class="p-3 bg-gray-50 rounded-lg flex justify-between gap-2">
+            <div>
+                <p class="font-semibold text-gray-800">${item.title}</p>
+                <p class="text-xs text-gray-500">${item.created_at || item.date}</p>
+            </div>
+            ${item.type === 'visit' ? `<a href="/doctor/dashboard/visits/${item.id}" class="text-xs text-blue-600">كشف</a>` : ''}
+            ${item.type === 'prescription' ? `<a href="/doctor/dashboard/prescriptions/${item.id}" class="text-xs text-teal-600">روشتة</a>` : ''}
+        </div>
+    `).join('');
 
 function renderRecentAppointments(appointments) {
     const container = document.getElementById('recentAppointments');

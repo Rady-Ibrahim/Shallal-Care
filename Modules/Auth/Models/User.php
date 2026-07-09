@@ -32,6 +32,8 @@ class User extends Authenticatable
         'role',
         'status',
         'is_ghost',
+        'is_guest',
+        'guest_device_id',
         'created_by_doctor_id',
         'email_verified_at',
         'phone_verified_at',
@@ -62,14 +64,39 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isSecretary(): bool
+    {
+        return $this->role === 'secretary';
+    }
+
+    public function isClinicPanelUser(): bool
+    {
+        return $this->isDoctor() || $this->isSecretary();
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';
     }
 
+    public function isGuest(): bool
+    {
+        return (bool) $this->is_guest;
+    }
+
+    public function isClinicGhost(): bool
+    {
+        return (bool) $this->is_ghost;
+    }
+
     public function doctor()
     {
         return $this->hasOne(\Modules\Doctor\Models\Doctor::class);
+    }
+
+    public function clinicStaffMember()
+    {
+        return $this->hasOne(\Modules\Doctor\Models\ClinicStaffMember::class);
     }
 
     public function deviceTokens()
