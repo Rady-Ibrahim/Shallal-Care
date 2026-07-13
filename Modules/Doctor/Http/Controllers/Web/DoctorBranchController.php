@@ -97,4 +97,23 @@ class DoctorBranchController extends Controller
 
         return $this->success(null, 'تم حذف الفرع بنجاح');
     }
+
+    public function switchBranch(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $request->validate(['branch_id' => 'required|integer|exists:doctor_branches,id']);
+
+        $doctor = $this->resolveDoctor();
+        $branch = $this->branchService->getBranch((string) $request->branch_id);
+
+        if (! $branch || (int) $branch->doctor_id !== (int) $doctor->id) {
+            return $this->forbidden('غير مصرح');
+        }
+
+        session(['clinic_branch_id' => $branch->id]);
+
+        return $this->success([
+            'branch_id' => $branch->id,
+            'branch_name' => $branch->branch_name,
+        ], 'تم تبديل الفرع');
+    }
 }

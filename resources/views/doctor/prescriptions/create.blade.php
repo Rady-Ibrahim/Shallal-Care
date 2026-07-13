@@ -126,6 +126,10 @@ async function loadPatients() {
             if (patientId) {
                 select.value = patientId;
             }
+            const diagnosis = urlParams.get('diagnosis');
+            if (diagnosis) {
+                document.getElementById('diagnosis').value = decodeURIComponent(diagnosis);
+            }
         }
     } catch (error) {
         console.error('Error loading patients:', error);

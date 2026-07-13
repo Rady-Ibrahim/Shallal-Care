@@ -58,6 +58,10 @@
                     <span>الرئيسية</span>
                 </a>
                 @if(($clinicContext ?? null)?->hasPermission('reception.view'))
+                <a href="/doctor/dashboard/today" class="{{ $navClass(request()->routeIs('doctor.today')) }}">
+                    <i class="fas fa-sun w-5"></i>
+                    <span>يوم العيادة</span>
+                </a>
                 <a href="/doctor/dashboard/reception" class="{{ $navClass(request()->routeIs('doctor.reception.*')) }}">
                     <i class="fas fa-door-open w-5"></i>
                     <span>الاستقبال</span>
@@ -150,6 +154,13 @@
                         <p class="text-sm text-gray-500">@yield('page-description', 'نظرة عامة على حسابك')</p>
                     </div>
                     <div class="flex items-center gap-4">
+                        @if($isClinicOwner ?? false)
+                        <select id="branchSwitcher" class="text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white min-w-[140px]" title="تبديل الفرع">
+                            @if(!empty($clinicBranch))
+                                <option value="{{ $clinicBranch->id }}" selected>{{ $clinicBranch->branch_name }}</option>
+                            @endif
+                        </select>
+                        @endif
                         <div class="relative">
                         <button onclick="toggleNotificationsMenu()" class="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
                             <i class="fas fa-bell"></i>
@@ -397,13 +408,24 @@
 
         window.addEventListener('load', async function() {
             try {
-                const data = await apiCall('/doctor/api/metrics');
-                const badge = document.getElementById('pendingRequestsBadge');
-                if (badge && data?.success) {
-                    const count = data.data?.appointments?.pending_requests || 0;
-                    badge.textContent = count;
-                    badge.classList.toggle('hidden', count === 0);
+                @if($isClinicOwner ?? false)
+                const branchSelect = document.getElementById('branchSwitcher');
+                if (branchSelect) {
+                    const branchesRes = await apiCall('/doctor/api/branches');
+                    const branches = branchesRes?.data || [];
+                    const currentId = @json($clinicBranch->id ?? null);
+                    branchSelect.innerHTML = branches.map(b =>
+                        `<option value="${b.id}" ${String(b.id) === String(currentId) ? 'selected' : ''}>${b.branch_name}</option>`
+                    ).join('');
+                    branchSelect.addEventListener('change', async () => {
+                        const res = await apiCall('/doctor/api/branch/switch', {
+                            method: 'POST',
+                            body: JSON.stringify({ branch_id: parseInt(branchSelect.value, 10) }),
+                        });
+                        if (res?.success) window.location.reload();
+                    });
                 }
+                @endif
                 await loadUnreadNotifications(false);
                 notificationPolling = setInterval(() => loadUnreadNotifications(true), 20000);
             } catch (e) {}

@@ -55,6 +55,7 @@
             <thead class="bg-gray-50 border-b">
                 <tr>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">المريض</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">العنوان</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">النوع</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">التاريخ</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الملفات</th>
@@ -63,7 +64,7 @@
             </thead>
             <tbody id="recordsTableBody">
                 <tr class="text-center py-8">
-                    <td colspan="5" class="py-8">
+                    <td colspan="6" class="py-8">
                         <i class="fas fa-spinner fa-spin text-2xl text-teal-600 mb-2"></i>
                         <p class="text-gray-500">جاري التحميل...</p>
                     </td>
@@ -127,7 +128,7 @@ function renderRecordsTable(records) {
     if (records.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                     <i class="fas fa-inbox text-4xl mb-2 text-gray-400"></i>
                     <p>لا توجد سجلات</p>
                 </td>
@@ -149,6 +150,7 @@ function renderRecordsTable(records) {
                     </div>
                 </div>
             </td>
+            <td class="px-6 py-4 text-gray-700">${record.title || '-'}</td>
             <td class="px-6 py-4">
                 <span class="px-3 py-1 rounded-full text-xs font-semibold ${getTypeClass(record.type)}">
                     ${getTypeText(record.type)}

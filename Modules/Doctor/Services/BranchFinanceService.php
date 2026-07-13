@@ -108,7 +108,7 @@ class BranchFinanceService
             'amount' => (float) $transaction->amount,
             'payment_method' => $transaction->payment_method,
             'payment_method_label' => config('clinic.payment_methods.'.$transaction->payment_method, $transaction->payment_method),
-            'booking_number' => $transaction->booking?->booking_number,
+            'booking_number' => $transaction->booking?->display_booking_number,
             'notes' => $transaction->notes,
             'recorded_by' => $transaction->recordedByUser?->name,
             'created_at' => $transaction->created_at?->format('Y-m-d H:i'),

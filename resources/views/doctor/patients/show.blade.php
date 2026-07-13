@@ -36,7 +36,7 @@
                             <p class="text-lg font-semibold text-gray-800" id="patientGender">-</p>
                         </div>
                         <div>
-                            <p class="text-sm text-gray-600">المواعيد</p>
+                            <p class="text-sm text-gray-600">الزيارات</p>
                             <p class="text-lg font-semibold text-gray-800" id="totalAppointments">0</p>
                         </div>
                     </div>
@@ -65,13 +65,23 @@
             <!-- Medical History -->
             <div class="border-t mt-6 pt-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-3">التاريخ المرضي</h3>
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <p class="text-sm font-semibold text-amber-800 mb-1">الحساسية</p>
+                        <p class="text-gray-700" id="patientAllergies">-</p>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <p class="text-sm font-semibold text-blue-800 mb-1">أمراض مزمنة</p>
+                        <p class="text-gray-700" id="patientChronic">-</p>
+                    </div>
+                </div>
                 <p class="text-gray-700 leading-relaxed" id="medicalHistory">-</p>
             </div>
         </div>
 
         <!-- Recent Appointments -->
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">المواعيد الأخيرة</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">الزيارات الأخيرة</h3>
             <div id="recentAppointments" class="space-y-3">
                 <p class="text-gray-500">جاري التحميل...</p>
             </div>
@@ -101,7 +111,7 @@
             <h3 class="text-lg font-semibold text-gray-800 mb-4">الإحصائيات</h3>
             <div class="space-y-4">
                 <div>
-                    <p class="text-sm text-gray-600">إجمالي المواعيد</p>
+                    <p class="text-sm text-gray-600">إجمالي الزيارات</p>
                     <p class="text-2xl font-bold text-gray-800" id="totalAppointmentsCount">0</p>
                 </div>
                 <div>
@@ -172,20 +182,27 @@ function renderPatientDetails(patient) {
         document.getElementById('fileNumber').textContent = 'ملف: ' + patient.file_number;
     }
     document.getElementById('patientAge').textContent = patient.age || '-';
-    document.getElementById('patientGender').textContent = patient.gender === 'male' ? 'ذكر' : 'أنثى';
+    document.getElementById('patientGender').textContent = patient.gender === 'male'
+        ? 'ذكر'
+        : patient.gender === 'female'
+            ? 'أنثى'
+            : '-';
     document.getElementById('patientPhoneFull').textContent = patient.phone || '-';
     document.getElementById('patientEmail').textContent = patient.email || '-';
     document.getElementById('patientAddress').textContent = patient.address || '-';
-    document.getElementById('medicalHistory').textContent = patient.medical_history || 'لا يوجد تاريخ مرضي';
+    document.getElementById('patientAllergies').textContent = patient.allergies || 'لا يوجد';
+    document.getElementById('patientChronic').textContent = patient.chronic_conditions || 'لا يوجد';
+    document.getElementById('medicalHistory').textContent = patient.medical_history || 'لا يوجد تاريخ مرضي مسجّل';
 
     // Statistics
-    document.getElementById('totalAppointments').textContent = patient.total_appointments || 0;
-    document.getElementById('totalAppointmentsCount').textContent = patient.total_appointments || 0;
+    const totalVisits = patient.total_visits ?? patient.total_appointments ?? 0;
+    document.getElementById('totalAppointments').textContent = totalVisits;
+    document.getElementById('totalAppointmentsCount').textContent = totalVisits;
     document.getElementById('totalPrescriptions').textContent = patient.total_prescriptions || 0;
     document.getElementById('totalRecords').textContent = patient.total_records || 0;
 
-    // Recent Appointments
-    renderRecentAppointments(patient.recent_appointments || []);
+    // Recent visits
+    renderRecentAppointments(patient.recent_visits?.length ? patient.recent_visits : (patient.recent_appointments || []));
 
     // Medical Records
     renderMedicalRecords(patient.medical_records || []);
@@ -214,27 +231,32 @@ async function loadTimeline() {
             ${item.type === 'prescription' ? `<a href="/doctor/dashboard/prescriptions/${item.id}" class="text-xs text-teal-600">روشتة</a>` : ''}
         </div>
     `).join('');
+}
 
 function renderRecentAppointments(appointments) {
     const container = document.getElementById('recentAppointments');
     
     if (appointments.length === 0) {
-        container.innerHTML = '<p class="text-gray-500">لا توجد مواعيد</p>';
+        container.innerHTML = '<p class="text-gray-500">لا توجد زيارات</p>';
         return;
     }
 
     container.innerHTML = appointments.map(appointment => `
         <div class="p-3 bg-gray-50 rounded-lg">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-2">
                 <div>
-                    <p class="text-sm text-gray-600">${formatDate(appointment.appointment_date)}</p>
-                    <p class="text-sm text-gray-500">${appointment.appointment_time || '-'}</p>
+                    ${appointment.booking_number ? `<p class="font-mono text-blue-700 font-bold text-sm">حجز #${appointment.booking_number}</p>` : ''}
+                    <p class="text-sm text-gray-600">${formatDate(appointment.visit_date || appointment.appointment_date)}</p>
+                    <p class="text-sm text-gray-500">${appointment.appointment_time || appointment.status_label || '-'}</p>
                 </div>
-                <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusClass(appointment.status)}">
-                    ${getStatusText(appointment.status)}
-                </span>
+                <div class="flex flex-col items-end gap-1">
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusClass(appointment.status)}">
+                        ${appointment.status_label || getStatusText(appointment.status)}
+                    </span>
+                    ${appointment.id && appointment.source === 'clinic' ? `<a href="/doctor/dashboard/visits/${appointment.id}" class="text-xs text-blue-600">فتح الكشف</a>` : ''}
+                </div>
             </div>
-            <p class="text-sm text-gray-600 mt-2">${appointment.notes || 'بدون ملاحظات'}</p>
+            ${appointment.notes ? `<p class="text-sm text-gray-600 mt-2">${appointment.notes}</p>` : ''}
         </div>
     `).join('');
 }
@@ -266,8 +288,12 @@ function getStatusClass(status) {
     const classes = {
         'pending': 'bg-yellow-100 text-yellow-800',
         'confirmed': 'bg-blue-100 text-blue-800',
+        'scheduled': 'bg-blue-100 text-blue-800',
+        'waiting': 'bg-amber-100 text-amber-800',
+        'with_doctor': 'bg-purple-100 text-purple-800',
         'completed': 'bg-green-100 text-green-800',
         'cancelled': 'bg-red-100 text-red-800',
+        'no_show': 'bg-red-100 text-red-800',
     };
     return classes[status] || 'bg-gray-100 text-gray-800';
 }
@@ -276,15 +302,19 @@ function getStatusText(status) {
     const texts = {
         'pending': 'معلق',
         'confirmed': 'مؤكد',
+        'scheduled': 'محجوز',
+        'waiting': 'في الدور',
+        'with_doctor': 'عند الطبيب',
         'completed': 'مكتمل',
         'cancelled': 'ملغي',
+        'no_show': 'لم يحضر',
     };
     return texts[status] || status;
 }
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 </script>
 @endsection

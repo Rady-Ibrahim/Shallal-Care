@@ -25,7 +25,7 @@
     <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-blue-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-gray-500 text-sm">مواعيد اليوم</p>
+                <p class="text-gray-500 text-sm">زيارات اليوم</p>
                 <h3 class="text-3xl font-bold text-gray-800 mt-2" id="todayAppointments">-</h3>
                 <p class="text-sm text-blue-600 mt-2" id="upcomingAppointments">-</p>
             </div>
@@ -49,16 +49,16 @@
         </div>
     </div>
 
-    <!-- Reviews -->
+    <!-- Queue Today -->
     <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-yellow-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-gray-500 text-sm">التقييمات</p>
-                <h3 class="text-3xl font-bold text-gray-800 mt-2" id="averageRating">-</h3>
-                <p class="text-sm text-yellow-600 mt-2" id="totalReviews">-</p>
+                <p class="text-gray-500 text-sm">في الدور الآن</p>
+                <h3 class="text-3xl font-bold text-gray-800 mt-2" id="queueWaiting">-</h3>
+                <p class="text-sm text-yellow-600 mt-2" id="queueCompleted">-</p>
             </div>
             <div class="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center">
-                <i class="fas fa-star text-yellow-600 text-2xl"></i>
+                <i class="fas fa-list-ol text-yellow-600 text-2xl"></i>
             </div>
         </div>
     </div>
@@ -68,24 +68,20 @@
 <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-bold text-gray-800">إحصائيات يوم العيادة</h3>
-        <p class="text-sm text-gray-500">{{ now()->format('Y-m-d') }}</p>
+        <a href="/doctor/dashboard/today" class="text-blue-600 text-sm">شاشة يوم العيادة</a>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="p-4 rounded-lg bg-green-50">
             <p class="text-xs text-gray-600">مكتملة اليوم</p>
             <p id="clinicCompleted" class="text-2xl font-bold text-green-700 mt-1">0</p>
         </div>
         <div class="p-4 rounded-lg bg-blue-50">
-            <p class="text-xs text-gray-600">مؤكدة اليوم</p>
-            <p id="clinicConfirmed" class="text-2xl font-bold text-blue-700 mt-1">0</p>
+            <p class="text-xs text-gray-600">محجوز</p>
+            <p id="clinicScheduled" class="text-2xl font-bold text-blue-700 mt-1">0</p>
         </div>
-        <div class="p-4 rounded-lg bg-red-50">
-            <p class="text-xs text-gray-600">ملغاة اليوم</p>
-            <p id="clinicCancelled" class="text-2xl font-bold text-red-700 mt-1">0</p>
-        </div>
-        <div class="p-4 rounded-lg bg-purple-50">
-            <p class="text-xs text-gray-600">سجلات أُنشئت</p>
-            <p id="clinicRecords" class="text-2xl font-bold text-purple-700 mt-1">0</p>
+        <div class="p-4 rounded-lg bg-amber-50">
+            <p class="text-xs text-gray-600">في الانتظار</p>
+            <p id="clinicWaiting" class="text-2xl font-bold text-amber-700 mt-1">0</p>
         </div>
         <div class="p-4 rounded-lg bg-amber-50">
             <p class="text-xs text-gray-600">إيراد اليوم</p>
@@ -99,8 +95,8 @@
     <!-- Today's Appointments -->
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-bold text-gray-800">مواعيد اليوم</h3>
-            <a href="/doctor/dashboard/calendar" class="text-teal-600 hover:text-teal-700 text-sm">عرض التقويم</a>
+            <h3 class="text-lg font-bold text-gray-800">زيارات اليوم</h3>
+            <a href="/doctor/dashboard/reception" class="text-teal-600 hover:text-teal-700 text-sm">الاستقبال</a>
         </div>
         <div id="todayActivity" class="space-y-4">
             <!-- Appointments will be loaded here -->
@@ -114,8 +110,8 @@
     <!-- Upcoming Tasks -->
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-bold text-gray-800">المهام القادمة</h3>
-            <a href="/doctor/dashboard/patients" class="text-teal-600 hover:text-teal-700 text-sm">عرض الكل</a>
+            <h3 class="text-lg font-bold text-gray-800">الدور الآن</h3>
+            <a href="/doctor/dashboard/queue" class="text-teal-600 hover:text-teal-700 text-sm">إدارة الدور</a>
         </div>
         <div id="upcomingTasks" class="space-y-4">
             <!-- Tasks will be loaded here -->
@@ -161,23 +157,23 @@
                 const metrics = data.data;
 
                 // Update stats
-                document.getElementById('totalPatients').textContent = metrics.patients.total || 0;
-                document.getElementById('newPatientsCount').textContent = `${metrics.patients.new_this_month || 0} جديد هذا الشهر`;
+                document.getElementById('totalPatients').textContent = metrics.patients?.total || 0;
+                document.getElementById('newPatientsCount').textContent = `${metrics.patients?.new_this_month || 0} جديد هذا الشهر`;
 
-                document.getElementById('todayAppointments').textContent = metrics.appointments.today || 0;
-                document.getElementById('upcomingAppointments').textContent = `${metrics.appointments.upcoming || 0} قادم`;
+                const clinic = metrics.clinic_today || {};
+                document.getElementById('todayAppointments').textContent = clinic.total || 0;
+                document.getElementById('upcomingAppointments').textContent = `${clinic.waiting || 0} في الدور`;
 
-                document.getElementById('totalPrescriptions').textContent = metrics.prescriptions.total || 0;
-                document.getElementById('thisMonthPrescriptions').textContent = `${metrics.prescriptions.this_month || 0} هذا الشهر`;
+                document.getElementById('totalPrescriptions').textContent = metrics.prescriptions?.total || 0;
+                document.getElementById('thisMonthPrescriptions').textContent = `${metrics.prescriptions?.this_month || 0} هذا الشهر`;
 
-                document.getElementById('clinicCompleted').textContent = metrics.clinic_today?.completed || 0;
-                document.getElementById('clinicConfirmed').textContent = metrics.clinic_today?.confirmed || 0;
-                document.getElementById('clinicCancelled').textContent = metrics.clinic_today?.cancelled || 0;
-                document.getElementById('clinicRecords').textContent = metrics.clinic_today?.records_created || 0;
-                document.getElementById('clinicRevenue').textContent = formatCurrency(metrics.clinic_today?.revenue || 0);
+                document.getElementById('queueWaiting').textContent = clinic.waiting || 0;
+                document.getElementById('queueCompleted').textContent = `${clinic.completed || 0} مكتمل اليوم`;
 
-                document.getElementById('averageRating').textContent = metrics.reviews.average_rating || '0.0';
-                document.getElementById('totalReviews').textContent = `${metrics.reviews.total || 0} تقييم`;
+                document.getElementById('clinicCompleted').textContent = clinic.completed || 0;
+                document.getElementById('clinicScheduled').textContent = clinic.scheduled || 0;
+                document.getElementById('clinicWaiting').textContent = clinic.waiting || 0;
+                document.getElementById('clinicRevenue').textContent = formatCurrency(clinic.revenue || 0);
             }
         } catch (error) {
             console.error('Error loading metrics:', error);
@@ -190,13 +186,14 @@
             
             if (data.success) {
                 const container = document.getElementById('todayActivity');
-                const appointments = data.data.appointments || [];
+                const appointments = data.data.bookings || [];
                 
                 if (appointments.length === 0) {
                     container.innerHTML = `
                         <div class="text-center text-gray-500 py-8">
                             <i class="fas fa-calendar-check text-gray-400 text-2xl mb-2"></i>
-                            <p>لا توجد مواعيد لليوم</p>
+                            <p>لا توجد زيارات لليوم</p>
+                            <a href="/doctor/dashboard/reception" class="text-blue-600 text-sm mt-2 inline-block">+ حجز مريض</a>
                         </div>
                     `;
                     return;
@@ -205,19 +202,15 @@
                 container.innerHTML = appointments.map(appointment => `
                     <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-user text-blue-600"></i>
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center font-bold text-blue-700">
+                                ${appointment.booking_number || '#'}
                             </div>
                             <div>
                                 <h4 class="font-semibold text-gray-800">${appointment.patient_name || 'مريض'}</h4>
-                                <p class="text-sm text-gray-500">${appointment.time || '-'}</p>
+                                <p class="text-sm text-gray-500">${appointment.status_label || appointment.status}</p>
                             </div>
                         </div>
-                        <div class="text-left">
-                            <span class="text-xs px-3 py-1 rounded-full ${getAppointmentStatusClass(appointment.status)}">
-                                ${getAppointmentStatusText(appointment.status)}
-                            </span>
-                        </div>
+                        <a href="/doctor/dashboard/visits/${appointment.id}" class="text-xs text-blue-600">كشف</a>
                     </div>
                 `).join('');
             }
@@ -248,14 +241,14 @@
                     <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-${task.type === 'appointment' ? 'calendar' : 'clipboard'} text-teal-600"></i>
+                                <i class="fas fa-stethoscope text-teal-600"></i>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-800">${task.title || 'مهمة'}</h4>
-                                <p class="text-sm text-gray-500">${task.date || '-'}</p>
+                                <h4 class="font-semibold text-gray-800">${task.title || 'مريض'}</h4>
+                                <p class="text-sm text-gray-500">في الدور</p>
                             </div>
                         </div>
-                        <span class="text-xs text-gray-500">${task.time || ''}</span>
+                        ${task.url ? `<a href="${task.url}" class="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg">كشف</a>` : ''}
                     </div>
                 `).join('');
             }
@@ -344,7 +337,7 @@
     }
 
     function formatCurrency(amount) {
-        return new Intl.NumberFormat('ar-IQ', { style: 'currency', currency: 'IQD', minimumFractionDigits: 0 }).format(amount || 0);
+        return new Intl.NumberFormat('ar-EG', { style: 'decimal', minimumFractionDigits: 0 }).format(amount || 0) + ' {{ config('clinic.currency_symbol') }}';
     }
 </script>
 @endsection

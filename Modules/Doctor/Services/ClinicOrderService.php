@@ -198,7 +198,7 @@ class ClinicOrderService
         if ($detailed) {
             $data['result_summary'] = $order->result_summary;
             $data['result_files'] = $order->result_files ?? [];
-            $data['booking_number'] = $order->booking?->booking_number;
+            $data['booking_number'] = $order->booking?->display_booking_number;
             $data['completed_at'] = $order->completed_at?->format('Y-m-d H:i');
         }
 

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Doctor\Http\Controllers\Doctor\ClinicDayController;
 use Modules\Doctor\Http\Controllers\Doctor\ClinicStaffController;
 use Modules\Doctor\Http\Controllers\Doctor\DoctorDashboardController;
 use Modules\Doctor\Http\Controllers\Doctor\ClinicOrderController;
@@ -43,6 +44,14 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                 Route::middleware(['doctor.approved', 'clinic.context'])->group(function () {
                     Route::get('/dashboard', [DoctorDashboardWebController::class, 'dashboard'])->name('dashboard');
 
+                    Route::middleware('clinic.permission:reception.view')->group(function () {
+                        Route::get('/dashboard/today', [DoctorDashboardWebController::class, 'clinicDay'])->name('today');
+                    });
+
+                    Route::middleware('clinic.permission:queue.view')->group(function () {
+                        Route::get('/dashboard/waiting-screen', [DoctorDashboardWebController::class, 'waitingScreen'])->name('waiting-screen');
+                    });
+
                     Route::middleware('clinic.owner')->group(function () {
                         Route::get('/dashboard/staff', [DoctorDashboardWebController::class, 'staff'])->name('staff.index');
                         Route::get('/dashboard/subscription/plans', [DoctorDashboardWebController::class, 'subscriptionPlans'])->name('subscription.plans');
@@ -58,6 +67,7 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
 
                     Route::middleware('clinic.permission:finance.view')->group(function () {
                         Route::get('/dashboard/finance', [DoctorDashboardWebController::class, 'finance'])->name('finance.index');
+                        Route::get('/dashboard/finance/print', [DoctorDashboardWebController::class, 'financePrint'])->name('finance.print');
                     });
 
                     Route::middleware('clinic.permission:records.view')->group(function () {
@@ -112,6 +122,7 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                         Route::middleware('clinic.permission:reception.view')->group(function () {
                             Route::get('/reception/stats', [ReceptionController::class, 'stats']);
                             Route::get('/reception/bookings', [ReceptionController::class, 'index']);
+                            Route::get('/reception/patient-lookup', [ClinicDayController::class, 'patientLookup']);
                         });
 
                         Route::middleware('clinic.permission:reception.manage')->group(function () {
@@ -165,6 +176,15 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                             Route::get('/reports/overview', [ClinicReportController::class, 'overview']);
                         });
 
+                        Route::middleware('clinic.permission:reception.view')->group(function () {
+                            Route::get('/clinic-day/overview', [ClinicDayController::class, 'overview']);
+                            Route::get('/clinic/templates', [ClinicDayController::class, 'templates']);
+                        });
+
+                        Route::middleware('clinic.permission:queue.view')->group(function () {
+                            Route::get('/waiting-screen', [ClinicDayController::class, 'waitingScreen']);
+                        });
+
                         Route::get('/metrics', [DoctorDashboardController::class, 'metrics']);
                         Route::get('/today-activity', [DoctorDashboardController::class, 'todayActivity']);
                         Route::get('/upcoming-tasks', [DoctorDashboardController::class, 'upcomingTasks']);
@@ -207,6 +227,8 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                             ->middleware('clinic.owner');
 
                         Route::get('/schedules', [DoctorDashboardController::class, 'schedules']);
+                        Route::post('/schedules', [DoctorDashboardController::class, 'storeSchedule'])
+                            ->middleware('clinic.owner');
                         Route::delete('/schedules/{scheduleId}', [DoctorDashboardController::class, 'deleteSchedule']);
 
                         Route::get('/calendar', [DoctorDashboardController::class, 'calendar']);
@@ -240,6 +262,7 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                             Route::post('/branches', [DoctorBranchController::class, 'store']);
                             Route::put('/branches/{branchId}', [DoctorBranchController::class, 'update']);
                             Route::delete('/branches/{branchId}', [DoctorBranchController::class, 'destroy']);
+                            Route::post('/branch/switch', [DoctorBranchController::class, 'switchBranch']);
                         });
 
                         Route::post('/change-password', [DoctorDashboardController::class, 'changePassword'])

@@ -139,9 +139,10 @@
 
 @section('scripts')
 <script>
-const recordId = window.location.pathname.split('/').pop();
+const recordId = {{ (int) $recordId }};
 let selectedFiles = [];
 let existingFileIds = [];
+let loadedAttachments = [];
 
 window.addEventListener('load', async function() {
     await loadRecord();
@@ -177,25 +178,39 @@ function renderRecord(record) {
 
     // Render existing files
     const existingFilesContainer = document.getElementById('existingFiles');
-    if (record.attachments && record.attachments.length > 0) {
-        existingFileIds = record.attachments.map(att => att.id);
-        existingFilesContainer.innerHTML = record.attachments.map(att => `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-file text-gray-500"></i>
-                    <div>
-                        <p class="text-sm font-semibold text-gray-800">${att.file_name || 'ملف'}</p>
-                        <p class="text-xs text-gray-500">${formatFileSize(att.file_size)}</p>
-                    </div>
-                </div>
-                <button type="button" onclick="removeExistingFile('${att.id}')" class="text-red-600 hover:text-red-700">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `).join('');
+    loadedAttachments = record.attachments || [];
+    if (loadedAttachments.length > 0) {
+        existingFileIds = loadedAttachments.map(att => String(att.id));
+        renderExistingFiles();
     } else {
+        existingFileIds = [];
         existingFilesContainer.innerHTML = '<p class="text-gray-500">لا توجد ملفات مرفقة</p>';
     }
+}
+
+function renderExistingFiles() {
+    const existingFilesContainer = document.getElementById('existingFiles');
+    const visible = loadedAttachments.filter(att => existingFileIds.includes(String(att.id)));
+
+    if (visible.length === 0) {
+        existingFilesContainer.innerHTML = '<p class="text-gray-500">لا توجد ملفات مرفقة</p>';
+        return;
+    }
+
+    existingFilesContainer.innerHTML = visible.map(att => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-file text-gray-500"></i>
+                <div>
+                    <p class="text-sm font-semibold text-gray-800">${att.file_name || 'ملف'}</p>
+                    <p class="text-xs text-gray-500">${formatFileSize(att.file_size)}</p>
+                </div>
+            </div>
+            <button type="button" onclick="removeExistingFile('${att.id}')" class="text-red-600 hover:text-red-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 function handleFileSelect(event) {
@@ -245,8 +260,8 @@ function removeNewFile(index) {
 }
 
 function removeExistingFile(fileId) {
-    existingFileIds = existingFileIds.filter(id => id !== fileId);
-    loadRecord(); // Reload to show updated list
+    existingFileIds = existingFileIds.filter(id => String(id) !== String(fileId));
+    renderExistingFiles();
 }
 
 function formatFileSize(bytes) {
@@ -279,7 +294,8 @@ async function updateRecord(event) {
             formData.append('files[]', selectedFiles[i]);
         }
 
-        const data = await apiUpload(`/doctor/api/records/${recordId}`, formData, 'PUT');
+        formData.append('_method', 'PUT');
+        const data = await apiUpload(`/doctor/api/records/${recordId}`, formData, 'POST');
 
         if (data && data.success) {
             alert('تم تحديث السجل بنجاح');

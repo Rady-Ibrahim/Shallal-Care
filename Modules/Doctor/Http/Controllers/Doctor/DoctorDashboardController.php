@@ -10,6 +10,8 @@ use Illuminate\Routing\Controller;
 use Modules\Doctor\Http\Requests\Web\CreateGhostPatientRequest;
 use Modules\Auth\Models\User;
 use Modules\Doctor\Models\Doctor;
+use App\Support\ClinicDashboardContext;
+use Modules\Doctor\Services\ClinicDayService;
 use Modules\Doctor\Services\DoctorDashboardService;
 use Modules\Appointment\Services\Api\AppointmentService;
 
@@ -19,7 +21,8 @@ class DoctorDashboardController extends Controller
 
     public function __construct(
         private DoctorDashboardService $doctorDashboardService,
-        private AppointmentService $appointmentService
+        private AppointmentService $appointmentService,
+        private ClinicDayService $clinicDayService,
     ) {}
 
     protected function resolveDoctor(): Doctor
@@ -30,8 +33,12 @@ class DoctorDashboardController extends Controller
     public function metrics(): JsonResponse
     {
         try {
-            $doctor = $this->resolveDoctor();
-            return $this->success($this->doctorDashboardService->getMetrics($doctor->id));
+            $ctx = $this->clinicContext();
+
+            return $this->success($this->clinicDayService->getClinicMetrics(
+                $ctx->doctorId(),
+                $ctx->branchId()
+            ));
         } catch (\Exception $e) {
             return $this->serverError('حدث خطأ أثناء جلب المقاييس');
         }
@@ -72,8 +79,15 @@ class DoctorDashboardController extends Controller
     public function todayActivity(): JsonResponse
     {
         try {
-            $doctor = $this->resolveDoctor();
-            return $this->success($this->doctorDashboardService->getTodayActivity($doctor->id));
+            $ctx = $this->clinicContext();
+            if (! $ctx->branchId()) {
+                return $this->success(['bookings' => []]);
+            }
+
+            return $this->success($this->clinicDayService->getTodayActivity(
+                $ctx->doctorId(),
+                $ctx->branchId()
+            ));
         } catch (\Exception $e) {
             return $this->serverError('حدث خطأ أثناء جلب نشاط اليوم');
         }
@@ -82,8 +96,15 @@ class DoctorDashboardController extends Controller
     public function upcomingTasks(): JsonResponse
     {
         try {
-            $doctor = $this->resolveDoctor();
-            return $this->success($this->doctorDashboardService->getUpcomingTasks($doctor->id));
+            $ctx = $this->clinicContext();
+            if (! $ctx->branchId()) {
+                return $this->success(['tasks' => []]);
+            }
+
+            return $this->success($this->clinicDayService->getUpcomingQueue(
+                $ctx->doctorId(),
+                $ctx->branchId()
+            ));
         } catch (\Exception $e) {
             return $this->serverError('حدث خطأ أثناء جلب المهام القادمة');
         }
@@ -195,6 +216,33 @@ class DoctorDashboardController extends Controller
         }
     }
 
+    public function storeSchedule(Request $request): JsonResponse
+    {
+        $request->validate([
+            'day_of_week' => 'required|string|in:Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,sunday,monday,tuesday,wednesday,thursday,friday,saturday',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+        ]);
+
+        try {
+            $doctor = $this->resolveDoctor();
+            $schedule = $this->doctorDashboardService->createSchedule(
+                $doctor->id,
+                $request->all(),
+                $this->clinicContext()->branchId()
+            );
+
+            return $this->created([
+                'id' => $schedule->id,
+                'day_of_week' => ucfirst($schedule->day_of_week),
+                'start_time' => $schedule->start_time,
+                'end_time' => $schedule->end_time,
+            ], 'تم إضافة الجدول بنجاح');
+        } catch (\Exception $e) {
+            return $this->serverError('حدث خطأ أثناء إضافة الجدول');
+        }
+    }
+
     public function calendar(Request $request): JsonResponse
     {
         $request->validate([
@@ -203,13 +251,14 @@ class DoctorDashboardController extends Controller
         ]);
 
         try {
-            $doctor = $this->resolveDoctor();
-            $data = $this->doctorDashboardService->getCalendar(
-                $doctor->id,
+            $ctx = $this->clinicContext();
+
+            return $this->success($this->clinicDayService->getCalendar(
+                $ctx->doctorId(),
+                $ctx->branchId(),
                 (int) $request->year,
                 (int) $request->month
-            );
-            return $this->success($data);
+            ));
         } catch (\Exception $e) {
             return $this->serverError('حدث خطأ أثناء جلب التقويم');
         }
@@ -511,6 +560,8 @@ class DoctorDashboardController extends Controller
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'notes' => 'nullable|string',
+            'existing_files' => 'nullable|array',
+            'existing_files.*' => 'integer|min:0',
             'files' => 'nullable|array',
             'files.*' => 'file|max:10240',
         ]);
@@ -520,11 +571,13 @@ class DoctorDashboardController extends Controller
             $this->doctorDashboardService->updateRecord(
                 $doctor->id,
                 (int) $id,
-                $request->only(['type', 'title', 'description', 'notes']),
+                $request->only(['type', 'title', 'description', 'notes', 'existing_files']),
                 $request->file('files', [])
             );
 
             return $this->success($this->doctorDashboardService->getRecord($doctor->id, (int) $id), 'تم تحديث السجل بنجاح');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->notFound('السجل غير موجود');
         } catch (\Exception $e) {
             return $this->serverError('حدث خطأ أثناء تحديث السجل');
         }

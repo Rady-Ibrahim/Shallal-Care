@@ -26,6 +26,7 @@ class ClinicBooking extends Model
 
     protected $fillable = [
         'booking_number',
+        'daily_number',
         'doctor_id',
         'branch_id',
         'clinic_patient_id',
@@ -77,5 +78,18 @@ class ClinicBooking extends Model
     public function isInQueue(): bool
     {
         return in_array($this->status, [self::STATUS_WAITING, self::STATUS_WITH_DOCTOR], true);
+    }
+
+    public function getDisplayBookingNumberAttribute(): string
+    {
+        if ($this->daily_number) {
+            return (string) $this->daily_number;
+        }
+
+        if (preg_match('/-(\d+)$/', (string) $this->booking_number, $matches)) {
+            return $matches[1];
+        }
+
+        return (string) $this->booking_number;
     }
 }

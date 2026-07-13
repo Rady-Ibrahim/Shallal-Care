@@ -64,6 +64,30 @@
     </div>
 </div>
 
+<!-- Clinic CMS Stats -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-8 border-r-4 border-teal-500">
+    <h3 class="text-lg font-bold text-gray-800 mb-4">نشاط العيادات (CMS)</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="p-4 rounded-lg bg-teal-50">
+            <p class="text-xs text-gray-600">حجوزات اليوم</p>
+            <p id="clinicBookingsToday" class="text-2xl font-bold text-teal-700 mt-1">0</p>
+        </div>
+        <div class="p-4 rounded-lg bg-blue-50">
+            <p class="text-xs text-gray-600">إجمالي الحجوزات</p>
+            <p id="clinicBookingsTotal" class="text-2xl font-bold text-blue-700 mt-1">0</p>
+        </div>
+        <div class="p-4 rounded-lg bg-green-50">
+            <p class="text-xs text-gray-600">مرضى العيادات</p>
+            <p id="clinicPatientsTotal" class="text-2xl font-bold text-green-700 mt-1">0</p>
+        </div>
+        <div class="p-4 rounded-lg bg-amber-50">
+            <p class="text-xs text-gray-600">إيراد العيادات (الشهر)</p>
+            <p id="clinicRevenueMonth" class="text-2xl font-bold text-amber-700 mt-1">0</p>
+        </div>
+    </div>
+    <p class="text-sm text-gray-500 mt-3"><span id="clinicBranchesTotal">0</span> فرع · <span id="clinicBookingsCompleted">0</span> زيارة مكتملة · إيراد اليوم: <span id="clinicRevenueToday">0</span></p>
+</div>
+
 <!-- Pending Doctors Section -->
 <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
     <div class="flex items-center justify-between mb-6">
@@ -141,6 +165,15 @@
 
                 document.getElementById('totalRevenue').textContent = formatCurrency(metrics.revenue.total || 0);
                 document.getElementById('revenueGrowth').textContent = `${metrics.revenue.growth || 0}% نمو`;
+
+                const clinic = metrics.clinic || {};
+                document.getElementById('clinicBookingsToday').textContent = clinic.bookings_today || 0;
+                document.getElementById('clinicBookingsTotal').textContent = clinic.bookings_total || 0;
+                document.getElementById('clinicPatientsTotal').textContent = clinic.patients || 0;
+                document.getElementById('clinicRevenueMonth').textContent = formatCurrency(clinic.revenue_month || 0);
+                document.getElementById('clinicBranchesTotal').textContent = clinic.branches || 0;
+                document.getElementById('clinicBookingsCompleted').textContent = clinic.bookings_completed || 0;
+                document.getElementById('clinicRevenueToday').textContent = formatCurrency(clinic.revenue_today || 0);
             }
         } catch (error) {
             console.error('Error loading metrics:', error);
@@ -273,11 +306,10 @@
     }
 
     function formatCurrency(amount) {
-        return new Intl.NumberFormat('ar-IQ', {
-            style: 'currency',
-            currency: 'IQD',
+        return new Intl.NumberFormat('ar-EG', {
+            style: 'decimal',
             minimumFractionDigits: 0
-        }).format(amount);
+        }).format(amount || 0) + ' ج.م';
     }
 
     function getStatusClass(status) {

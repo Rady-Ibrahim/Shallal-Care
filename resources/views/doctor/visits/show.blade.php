@@ -46,6 +46,12 @@
     <h2 class="font-bold text-slate-800 mb-2">التشخيص والملاحظات</h2>
     <div>
       <label class="block text-sm font-semibold mb-1">التشخيص</label>
+      <div class="flex gap-2 mb-2">
+        <select id="diagnosisTemplate" class="flex-1 border rounded-lg px-3 py-2 text-sm" @unless($canManageVisit) disabled @endunless>
+          <option value="">— قالب تشخيص جاهز —</option>
+        </select>
+        <button type="button" id="applyDiagnosisTemplate" class="px-3 py-2 bg-slate-100 rounded-lg text-sm" @unless($canManageVisit) disabled @endunless>إدراج</button>
+      </div>
       <textarea name="diagnosis" id="diagnosis" rows="4" class="w-full border rounded-lg px-3 py-2" @unless($canManageVisit) disabled @endunless></textarea>
     </div>
     <div>
@@ -140,9 +146,29 @@ document.getElementById('visitForm')?.addEventListener('submit', async (e) => {
 
 document.getElementById('btnPrescription')?.addEventListener('click', async () => {
   if (patientId) {
-    window.location.href = `/doctor/dashboard/prescriptions/create?patient_id=${patientId}&booking_id=${bookingId}`;
+    const diagnosis = encodeURIComponent(document.getElementById('diagnosis')?.value || '');
+    window.location.href = `/doctor/dashboard/prescriptions/create?patient_id=${patientId}&booking_id=${bookingId}&diagnosis=${diagnosis}`;
   }
 });
+
+document.getElementById('applyDiagnosisTemplate')?.addEventListener('click', () => {
+  const tpl = document.getElementById('diagnosisTemplate')?.value;
+  if (!tpl) return;
+  const el = document.getElementById('diagnosis');
+  el.value = el.value ? el.value + '\n' + tpl : tpl;
+});
+
+async function loadDiagnosisTemplates() {
+  const res = await apiCall('/doctor/api/clinic/templates');
+  const select = document.getElementById('diagnosisTemplate');
+  if (!select || !res?.success) return;
+  (res.data.diagnosis || []).forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    select.appendChild(opt);
+  });
+}
 
 document.getElementById('btnComplete')?.addEventListener('click', async () => {
   if (!await confirmAction('إنهاء الزيارة؟ سيتم إغلاق الكشف وإخراج المريض من الدور')) return;
@@ -153,6 +179,6 @@ document.getElementById('btnComplete')?.addEventListener('click', async () => {
   }
 });
 
-window.addEventListener('load', loadVisit);
+window.addEventListener('load', () => { loadVisit(); loadDiagnosisTemplates(); });
 </script>
 @endsection

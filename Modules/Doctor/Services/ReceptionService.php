@@ -30,9 +30,12 @@ class ReceptionService
             );
 
             $fee = $data['consultation_fee'] ?? $doctor->consultation_fee ?? 0;
+            $visitDate = $data['visit_date'] ?? today();
+            $dailyNumber = $this->nextDailyNumber($branchId, $visitDate);
 
             $booking = ClinicBooking::create([
-                'booking_number' => $this->generateBookingNumber($doctorId, $branchId),
+                'daily_number' => $dailyNumber,
+                'booking_number' => $this->makeInternalBookingNumber($doctorId, $branchId, $visitDate, $dailyNumber),
                 'doctor_id' => $doctorId,
                 'branch_id' => $branchId,
                 'clinic_patient_id' => $clinicPatient->id,
@@ -70,6 +73,10 @@ class ReceptionService
             $query->where(function ($q) use ($search) {
                 $q->where('booking_number', 'like', '%'.$search.'%')
                     ->orWhereHas('patient', fn ($sub) => $sub->where('name', 'like', '%'.$search.'%'));
+
+                if (ctype_digit($search)) {
+                    $q->orWhere('daily_number', (int) $search);
+                }
             });
         }
 
@@ -145,7 +152,7 @@ class ReceptionService
                 'amount' => $amount,
                 'payment_method' => $method,
                 'recorded_by' => $userId,
-                'notes' => $data['notes'] ?? 'تحصيل كشف — '.$booking->booking_number,
+                'notes' => $data['notes'] ?? 'تحصيل كشف — '.$booking->display_booking_number,
             ]);
 
             return $this->formatBooking($booking->fresh(['patient', 'clinicPatient']));
@@ -234,15 +241,27 @@ class ReceptionService
         return sprintf('SC-%04d', $count);
     }
 
-    private function generateBookingNumber(int $doctorId, int $branchId): string
+    private function nextDailyNumber(int $branchId, $visitDate): int
     {
-        $date = now()->format('ymd');
-        $count = ClinicBooking::where('doctor_id', $doctorId)
-            ->where('branch_id', $branchId)
-            ->whereDate('created_at', today())
-            ->count() + 1;
+        $visitDate = $visitDate instanceof \Carbon\CarbonInterface
+            ? $visitDate->toDateString()
+            : (string) $visitDate;
 
-        return sprintf('BK-%s-%s-%03d', $date, $branchId, $count);
+        $last = ClinicBooking::where('branch_id', $branchId)
+            ->whereDate('visit_date', $visitDate)
+            ->lockForUpdate()
+            ->max('daily_number');
+
+        return ((int) $last) + 1;
+    }
+
+    private function makeInternalBookingNumber(int $doctorId, int $branchId, $visitDate, int $dailyNumber): string
+    {
+        $dateKey = str_replace('-', '', $visitDate instanceof \Carbon\CarbonInterface
+            ? $visitDate->format('Y-m-d')
+            : (string) $visitDate);
+
+        return sprintf('BK-%s-%s-%d', $dateKey, $branchId, $dailyNumber);
     }
 
     private function nextQueuePosition(int $branchId): int
@@ -267,7 +286,8 @@ class ReceptionService
     {
         return [
             'id' => $booking->id,
-            'booking_number' => $booking->booking_number,
+            'booking_number' => $booking->display_booking_number,
+            'daily_number' => $booking->daily_number,
             'file_number' => $booking->clinicPatient?->file_number,
             'patient_id' => $booking->patient_id,
             'patient_name' => $booking->patient?->name,

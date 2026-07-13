@@ -4,6 +4,9 @@ namespace Modules\Admin\Services;
 
 use Modules\Doctor\Models\Doctor;
 use Modules\Doctor\Models\DoctorBranch;
+use Modules\Doctor\Models\ClinicBooking;
+use Modules\Doctor\Models\ClinicPatient;
+use Modules\Doctor\Models\BranchTransaction;
 use Modules\Doctor\Models\Speciality;
 use Modules\Auth\Models\User;
 use Modules\Appointment\Models\Appointment;
@@ -51,6 +54,19 @@ class AdminDashboardService
         $activeSubscriptions = DoctorSubscription::where('status', 'active')->count();
         $expiredSubscriptions = DoctorSubscription::where('status', 'expired')->count();
 
+        $clinicBookingsTotal = ClinicBooking::count();
+        $clinicBookingsToday = ClinicBooking::whereDate('visit_date', today())->count();
+        $clinicBookingsCompleted = ClinicBooking::where('status', ClinicBooking::STATUS_COMPLETED)->count();
+        $clinicPatientsTotal = ClinicPatient::count();
+        $clinicBranchesTotal = DoctorBranch::count();
+        $clinicRevenueToday = BranchTransaction::where('type', 'income')
+            ->whereDate('created_at', today())
+            ->sum('amount');
+        $clinicRevenueMonth = BranchTransaction::where('type', 'income')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('amount');
+
         return [
             'doctors' => [
                 'total' => $totalDoctors,
@@ -83,6 +99,15 @@ class AdminDashboardService
             'subscriptions' => [
                 'active' => $activeSubscriptions,
                 'expired' => $expiredSubscriptions,
+            ],
+            'clinic' => [
+                'bookings_total' => $clinicBookingsTotal,
+                'bookings_today' => $clinicBookingsToday,
+                'bookings_completed' => $clinicBookingsCompleted,
+                'patients' => $clinicPatientsTotal,
+                'branches' => $clinicBranchesTotal,
+                'revenue_today' => (float) $clinicRevenueToday,
+                'revenue_month' => (float) $clinicRevenueMonth,
             ],
         ];
     }

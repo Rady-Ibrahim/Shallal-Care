@@ -108,7 +108,7 @@
 
 @section('scripts')
 <script>
-const prescriptionId = window.location.pathname.split('/').pop();
+const prescriptionId = {{ (int) $prescriptionId }};
 let medicineCounter = 0;
 
 window.addEventListener('load', async function() {

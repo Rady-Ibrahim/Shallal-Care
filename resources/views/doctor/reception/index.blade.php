@@ -5,6 +5,8 @@
 @section('page-description', 'حجز المرضى وتسجيل الحضور — ابحث برقم الحجز أو اسم المريض')
 
 @section('content')
+<div id="pageAlert" class="hidden mb-6 p-4 rounded-xl border text-sm font-semibold" role="alert"></div>
+
 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" id="statsCards">
     @foreach(['total'=>'إجمالي اليوم','scheduled'=>'محجوز','waiting'=>'في الانتظار','with_doctor'=>'عند الطبيب','completed'=>'تم','pending_payment'=>'بانتظار الدفع'] as $key => $label)
     <div class="bg-white rounded-xl border border-slate-200 p-4">
@@ -20,7 +22,7 @@
             <label class="block text-sm font-semibold text-slate-700 mb-1">بحث سريع</label>
             <input type="text" id="searchQ" placeholder="رقم الحجز أو اسم المريض..."
                 class="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <p class="text-xs text-slate-400 mt-1">مثال: BK-250709-1-001 أو أحمد محمد</p>
+            <p class="text-xs text-slate-400 mt-1">مثال: 1 أو أحمد محمد</p>
         </div>
         <div class="flex gap-2">
             <button type="button" id="toggleAdvanced" class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm">بحث متقدم</button>
@@ -52,12 +54,17 @@
         <p class="text-sm text-slate-500 mb-4">سيُنشأ رقم حجز تلقائياً بعد الحفظ</p>
         <form id="bookingForm" class="space-y-3">
             <div>
-                <label class="block text-sm font-semibold mb-1">اسم المريض *</label>
-                <input name="name" required class="w-full border rounded-lg px-3 py-2">
+                <label class="block text-sm font-semibold mb-1">رقم الهاتف *</label>
+                <input name="phone" id="bookingPhone" required class="w-full border rounded-lg px-3 py-2" placeholder="01xxxxxxxxx">
+            </div>
+            <div id="patientLookupCard" class="hidden p-4 rounded-xl border border-blue-200 bg-blue-50 text-sm space-y-1">
+                <p class="font-bold text-blue-900" id="lookupName">—</p>
+                <p class="text-blue-700" id="lookupMeta">—</p>
+                <p class="text-blue-600 text-xs" id="lookupDiagnosis">—</p>
             </div>
             <div>
-                <label class="block text-sm font-semibold mb-1">رقم الهاتف *</label>
-                <input name="phone" required class="w-full border rounded-lg px-3 py-2" placeholder="01xxxxxxxxx">
+                <label class="block text-sm font-semibold mb-1">اسم المريض *</label>
+                <input name="name" id="bookingName" required class="w-full border rounded-lg px-3 py-2">
             </div>
             <div>
                 <label class="block text-sm font-semibold mb-1">الجنس</label>
@@ -75,9 +82,8 @@
                 <label class="block text-sm font-semibold mb-1">ملاحظات</label>
                 <textarea name="notes" rows="2" class="w-full border rounded-lg px-3 py-2"></textarea>
             </div>
-            <div id="bookingSuccess" class="hidden p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm font-semibold"></div>
             <div class="flex gap-2 justify-end pt-2">
-                <button type="button" id="closeBookingModal" class="px-4 py-2 rounded-lg bg-slate-100">إغلاق</button>
+                <button type="button" id="closeBookingModal" class="px-4 py-2 rounded-lg bg-slate-100">إلغاء</button>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">حفظ وإصدار رقم حجز</button>
             </div>
         </form>
@@ -89,6 +95,26 @@
 <script>
 let currentStatus = 'all';
 let searchTimer = null;
+let pageAlertTimer = null;
+
+function showPageAlert(message, type = 'success') {
+    const alert = document.getElementById('pageAlert');
+    if (!alert) return;
+
+    alert.textContent = message;
+    alert.className = type === 'success'
+        ? 'mb-6 p-4 rounded-xl border border-green-200 bg-green-50 text-green-800 text-sm font-semibold'
+        : 'mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-800 text-sm font-semibold';
+    alert.classList.remove('hidden');
+    alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    clearTimeout(pageAlertTimer);
+    pageAlertTimer = setTimeout(() => alert.classList.add('hidden'), 10000);
+}
+
+function hidePageAlert() {
+    document.getElementById('pageAlert')?.classList.add('hidden');
+}
 
 const statusColors = {
     scheduled: 'bg-blue-100 text-blue-800',
@@ -196,15 +222,50 @@ document.querySelectorAll('.status-filter').forEach(btn => {
     });
 });
 
+let lookupTimer = null;
+
+async function lookupPatientByPhone(phone) {
+    const card = document.getElementById('patientLookupCard');
+    if (!phone || phone.length < 8) {
+        card?.classList.add('hidden');
+        return;
+    }
+    const res = await apiCall('/doctor/api/reception/patient-lookup?phone=' + encodeURIComponent(phone));
+    if (!res?.success || !res.data?.found) {
+        card?.classList.add('hidden');
+        return;
+    }
+    const p = res.data.patient;
+    document.getElementById('lookupName').textContent = p.name + (p.file_number ? ` — ملف ${p.file_number}` : '');
+    document.getElementById('lookupMeta').textContent = [
+        p.visits_count ? `${p.visits_count} زيارة` : null,
+        p.last_visit ? `آخر زيارة: ${p.last_visit}` : null,
+        p.allergies ? `حساسية: ${p.allergies}` : null,
+    ].filter(Boolean).join(' · ');
+    document.getElementById('lookupDiagnosis').textContent = p.last_diagnosis ? `آخر تشخيص: ${p.last_diagnosis}` : '';
+    if (p.name && !document.getElementById('bookingName').value) {
+        document.getElementById('bookingName').value = p.name;
+    }
+    if (p.gender) {
+        const genderSelect = document.querySelector('#bookingForm [name="gender"]');
+        if (genderSelect && !genderSelect.value) genderSelect.value = p.gender;
+    }
+    card?.classList.remove('hidden');
+}
+
+document.getElementById('bookingPhone')?.addEventListener('input', (e) => {
+    clearTimeout(lookupTimer);
+    lookupTimer = setTimeout(() => lookupPatientByPhone(e.target.value.trim()), 400);
+});
+
 document.getElementById('openBookingModal').addEventListener('click', () => {
     document.getElementById('bookingForm').reset();
-    document.getElementById('bookingSuccess').classList.add('hidden');
+    document.getElementById('patientLookupCard')?.classList.add('hidden');
     document.getElementById('bookingModal').classList.remove('hidden');
 });
 
 document.getElementById('closeBookingModal').addEventListener('click', () => {
     document.getElementById('bookingModal').classList.add('hidden');
-    loadBookings(); loadStats();
 });
 
 document.getElementById('bookingForm').addEventListener('submit', async (e) => {
@@ -216,10 +277,11 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         body: JSON.stringify(payload),
     });
     if (res?.success) {
-        const box = document.getElementById('bookingSuccess');
-        box.textContent = 'رقم الحجز: ' + res.data.booking_number;
-        box.classList.remove('hidden');
+        document.getElementById('bookingModal').classList.add('hidden');
         e.target.reset();
+        showPageAlert(`تم الحجز بنجاح — رقم الحجز: ${res.data.booking_number}`);
+        loadStats();
+        loadBookings();
     }
 });
 

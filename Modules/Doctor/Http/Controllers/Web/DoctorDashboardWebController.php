@@ -148,4 +148,27 @@ class DoctorDashboardWebController extends Controller
     {
         return view('doctor.reports.index');
     }
+
+    public function clinicDay(): View
+    {
+        return view('doctor.today.index', [
+            'currencySymbol' => config('clinic.currency_symbol', 'ج.م'),
+        ]);
+    }
+
+    public function waitingScreen(): View
+    {
+        return view('doctor.waiting-screen', [
+            'branchName' => $this->context()->branch?->branch_name ?? 'العيادة',
+        ]);
+    }
+
+    public function financePrint(): View
+    {
+        return view('doctor.finance.print', [
+            'currencySymbol' => config('clinic.currency_symbol', 'ج.م'),
+            'branchName' => $this->context()->branch?->branch_name ?? '',
+            'date' => today()->format('Y-m-d'),
+        ]);
+    }
 }

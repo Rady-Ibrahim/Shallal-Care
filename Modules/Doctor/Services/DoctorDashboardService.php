@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Appointment\Models\Appointment;
 use Modules\Auth\Models\User;
+use Modules\Doctor\Models\ClinicBooking;
 use Modules\Doctor\Models\ClinicPatient;
 use Modules\Doctor\Models\Doctor;
 use Modules\Doctor\Models\DoctorSchedule;
@@ -143,6 +144,11 @@ class DoctorDashboardService
                 ->where('patient_id', $patient->id)
                 ->first();
 
+            $lastClinicVisit = ClinicBooking::where('doctor_id', $doctorId)
+                ->where('patient_id', $patient->id)
+                ->orderByDesc('visit_date')
+                ->first();
+
             return [
                 'id' => $patient->id,
                 'name' => $patient->name,
@@ -151,8 +157,12 @@ class DoctorDashboardService
                 'is_ghost' => (bool) $patient->is_ghost,
                 'file_number' => $clinicPatient?->file_number,
                 'total_appointments' => $patient->total_appointments,
+                'total_visits' => ClinicBooking::where('doctor_id', $doctorId)
+                    ->where('patient_id', $patient->id)
+                    ->count(),
                 'last_appointment_date' => $lastAppointment?->appointment_date?->format('Y-m-d'),
-                'last_visit' => $lastAppointment?->appointment_date?->format('Y-m-d'),
+                'last_visit' => $lastClinicVisit?->visit_date?->format('Y-m-d')
+                    ?? $lastAppointment?->appointment_date?->format('Y-m-d'),
             ];
         });
 
@@ -183,12 +193,19 @@ class DoctorDashboardService
             ->orderByDesc('appointment_date')
             ->get();
 
+        $clinicBookings = ClinicBooking::where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->orderByDesc('visit_date')
+            ->orderByDesc('created_at')
+            ->get();
+
         $medicalRecords = MedicalRecord::where('doctor_id', $doctorId)
             ->where('patient_id', $patientId)
             ->orderByDesc('created_at')
             ->get();
 
         $age = $patient->birthdate ? Carbon::parse($patient->birthdate)->age : null;
+        $nonPrescriptionRecords = $medicalRecords->where('record_type', '!=', 'prescription');
 
         return [
             'id' => $patient->id,
@@ -205,17 +222,58 @@ class DoctorDashboardService
             'chronic_conditions' => $clinicPatient?->chronic_conditions,
             'medical_history' => $clinicPatient?->chronic_conditions,
             'total_appointments' => $appointments->count(),
+            'total_visits' => $clinicBookings->count() ?: $appointments->count(),
             'total_prescriptions' => $medicalRecords->where('record_type', 'prescription')->count(),
-            'total_records' => $medicalRecords->count(),
+            'total_records' => $nonPrescriptionRecords->count(),
+            'recent_visits' => $clinicBookings->take(5)->map(fn (ClinicBooking $booking) => [
+                'id' => $booking->id,
+                'source' => 'clinic',
+                'booking_number' => $booking->display_booking_number,
+                'visit_date' => $booking->visit_date?->format('Y-m-d'),
+                'status' => $booking->status,
+                'status_label' => $this->clinicBookingStatusLabel($booking->status),
+                'notes' => $booking->notes,
+            ])->values()->all(),
             'recent_appointments' => $appointments->take(5)->map(fn ($a) => [
                 'id' => $a->id,
+                'source' => 'appointment',
                 'appointment_date' => $a->appointment_date?->format('Y-m-d'),
                 'appointment_time' => $this->formatTime($a->appointment_time),
                 'status' => $a->status,
+                'status_label' => $this->appointmentStatusLabel($a->status),
                 'notes' => $a->notes,
             ])->values()->all(),
-            'medical_records' => $medicalRecords->map(fn ($record) => $this->formatRecord($record))->values()->all(),
+            'medical_records' => $nonPrescriptionRecords
+                ->take(10)
+                ->map(fn ($record) => $this->formatRecord($record))
+                ->values()
+                ->all(),
         ];
+    }
+
+    protected function clinicBookingStatusLabel(string $status): string
+    {
+        return match ($status) {
+            ClinicBooking::STATUS_SCHEDULED => 'محجوز',
+            ClinicBooking::STATUS_CHECKED_IN => 'حضر',
+            ClinicBooking::STATUS_WAITING => 'في الدور',
+            ClinicBooking::STATUS_WITH_DOCTOR => 'عند الطبيب',
+            ClinicBooking::STATUS_COMPLETED => 'تم',
+            ClinicBooking::STATUS_CANCELLED => 'ملغي',
+            ClinicBooking::STATUS_NO_SHOW => 'لم يحضر',
+            default => $status,
+        };
+    }
+
+    protected function appointmentStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'pending' => 'معلق',
+            'confirmed' => 'مؤكد',
+            'completed' => 'مكتمل',
+            'cancelled' => 'ملغي',
+            default => $status,
+        };
     }
 
     public function getTodayActivity(int $doctorId): array
@@ -378,6 +436,18 @@ class DoctorDashboardService
     {
         $schedule = DoctorSchedule::where('doctor_id', $doctorId)->findOrFail($scheduleId);
         return (bool) $schedule->delete();
+    }
+
+    public function createSchedule(int $doctorId, array $data, ?int $branchId = null): DoctorSchedule
+    {
+        return DoctorSchedule::create([
+            'doctor_id' => $doctorId,
+            'doctor_branch_id' => $branchId,
+            'day_of_week' => strtolower($data['day_of_week']),
+            'start_time' => strlen($data['start_time']) === 5 ? $data['start_time'].':00' : $data['start_time'],
+            'end_time' => strlen($data['end_time']) === 5 ? $data['end_time'].':00' : $data['end_time'],
+            'is_active' => true,
+        ]);
     }
 
     public function getCalendar(int $doctorId, int $year, int $month): array
@@ -648,7 +718,16 @@ class DoctorDashboardService
             ->findOrFail($recordId);
 
         $attachments = $record->attachments ?? [];
-        if (!empty($files)) {
+
+        if (array_key_exists('existing_files', $data)) {
+            $keep = collect($data['existing_files'])->map(fn ($index) => (int) $index)->all();
+            $attachments = collect($attachments)
+                ->filter(fn ($attachment, $index) => in_array((int) $index, $keep, true))
+                ->values()
+                ->all();
+        }
+
+        if (! empty($files)) {
             $attachments = array_merge($attachments, $this->uploadAttachments($files));
         }
 
@@ -724,6 +803,7 @@ class DoctorDashboardService
             'patient_name' => $record->patient?->name,
             'patient_phone' => $record->patient?->phone,
             'type' => $meta['display_type'] ?? $record->record_type,
+            'title' => $record->diagnosis,
             'attachments_count' => count($attachments),
             'created_at' => $record->created_at,
         ];

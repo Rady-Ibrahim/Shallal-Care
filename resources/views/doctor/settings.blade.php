@@ -104,9 +104,43 @@
         <div class="space-y-4" id="schedulesList">
             <p class="text-gray-500">جاري التحميل...</p>
         </div>
-        <button onclick="addSchedule()" class="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition">
+        <button onclick="openScheduleModal()" class="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition">
             <i class="fas fa-plus ml-2"></i>إضافة موعد
         </button>
+    </div>
+</div>
+
+<div id="scheduleModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold mb-4">إضافة جدول عمل</h3>
+        <form id="scheduleForm" onsubmit="saveSchedule(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">اليوم *</label>
+                <select id="scheduleDay" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <option value="Sunday">الأحد</option>
+                    <option value="Monday">الإثنين</option>
+                    <option value="Tuesday">الثلاثاء</option>
+                    <option value="Wednesday">الأربعاء</option>
+                    <option value="Thursday">الخميس</option>
+                    <option value="Friday">الجمعة</option>
+                    <option value="Saturday">السبت</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">من *</label>
+                    <input type="time" id="scheduleStart" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">إلى *</label>
+                    <input type="time" id="scheduleEnd" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="closeScheduleModal()" class="px-4 py-2 bg-gray-100 rounded-lg">إلغاء</button>
+                <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg">حفظ</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -369,8 +403,36 @@ function renderSchedules(schedules) {
     `).join('');
 }
 
-function addSchedule() {
-    alert('سيتم فتح نموذج إضافة جدول جديد');
+function openScheduleModal() {
+    document.getElementById('scheduleForm')?.reset();
+    document.getElementById('scheduleModal')?.classList.remove('hidden');
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleModal')?.classList.add('hidden');
+}
+
+async function saveSchedule(event) {
+    event.preventDefault();
+    try {
+        const data = await apiCall('/doctor/api/schedules', {
+            method: 'POST',
+            body: JSON.stringify({
+                day_of_week: document.getElementById('scheduleDay').value,
+                start_time: document.getElementById('scheduleStart').value,
+                end_time: document.getElementById('scheduleEnd').value,
+            }),
+        });
+        if (data.success) {
+            closeScheduleModal();
+            loadSchedules();
+            alert('تم إضافة الجدول بنجاح');
+        } else {
+            alert(data.error?.message || 'فشلت العملية');
+        }
+    } catch (error) {
+        alert('حدث خطأ أثناء الحفظ');
+    }
 }
 
 async function deleteSchedule(scheduleId) {

@@ -121,10 +121,10 @@ class ClinicVisitService
                 'type' => 'visit',
                 'id' => $b->id,
                 'date' => $b->visit_date?->format('Y-m-d'),
-                'title' => 'زيارة — '.$b->booking_number,
+                'title' => 'زيارة — '.$b->display_booking_number,
                 'status' => $b->status,
                 'status_label' => $this->bookingStatusLabel($b->status),
-                'booking_number' => $b->booking_number,
+                'booking_number' => $b->display_booking_number,
                 'file_number' => $b->clinicPatient?->file_number,
                 'created_at' => $b->created_at?->format('Y-m-d H:i'),
             ]);
@@ -230,7 +230,7 @@ class ClinicVisitService
     {
         return [
             'id' => $booking->id,
-            'booking_number' => $booking->booking_number,
+            'booking_number' => $booking->display_booking_number,
             'patient_id' => $booking->patient_id,
             'patient_name' => $booking->patient?->name,
             'patient_phone' => $booking->patient?->phone,
