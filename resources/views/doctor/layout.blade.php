@@ -72,6 +72,10 @@
                     <i class="fas fa-list-ol w-5"></i>
                     <span>الدور</span>
                 </a>
+                <a href="/doctor/dashboard/waiting-screen" target="_blank" class="{{ $navClass(request()->routeIs('doctor.waiting-screen')) }}">
+                    <i class="fas fa-tv w-5"></i>
+                    <span>شاشة الانتظار</span>
+                </a>
                 @endif
                 @if(($clinicContext ?? null)?->hasPermission('finance.view'))
                 <a href="/doctor/dashboard/finance" class="{{ $navClass(request()->routeIs('doctor.finance.*')) }}">
@@ -91,23 +95,31 @@
                     <span>التقارير</span>
                 </a>
                 @endif
+                @if(($clinicContext ?? null)?->hasPermission('patients.view'))
                 <a href="/doctor/dashboard/patients" class="{{ $navClass(request()->routeIs('doctor.patients.*')) }}">
                     <i class="fas fa-users w-5"></i>
                     <span>المرضى</span>
                 </a>
+                @endif
+                @if(($clinicContext ?? null)?->hasPermission('prescriptions.view'))
                 <a href="/doctor/dashboard/prescriptions" class="{{ $navClass(request()->routeIs('doctor.prescriptions.*')) }}">
                     <i class="fas fa-prescription w-5"></i>
                     <span>الروشتات</span>
                 </a>
+                @endif
+                @if(($clinicContext ?? null)?->hasPermission('records.view'))
                 <a href="/doctor/dashboard/records" class="{{ $navClass(request()->routeIs('doctor.records.*')) }}">
                     <i class="fas fa-file-medical w-5"></i>
                     <span>السجلات الطبية</span>
                 </a>
+                @endif
+                @if(($clinicContext ?? null)?->hasPermission('calendar.view'))
                 <a href="/doctor/dashboard/calendar" class="{{ $navClass(request()->routeIs('doctor.calendar')) }}">
                     <i class="fas fa-calendar-alt w-5"></i>
                     <span>التقويم</span>
                 </a>
-                @if($isClinicOwner ?? true)
+                @endif
+                @if($isClinicOwner ?? false)
                 <a href="/doctor/dashboard/staff" class="{{ $navClass(request()->routeIs('doctor.staff.*')) }}">
                     <i class="fas fa-user-nurse w-5"></i>
                     <span>السكرتارية</span>
@@ -117,10 +129,12 @@
                     <span>الاشتراك</span>
                 </a>
                 @endif
+                @if(($clinicContext ?? null)?->hasPermission('settings.view'))
                 <a href="/doctor/dashboard/settings" class="{{ $navClass(request()->routeIs('doctor.settings')) }}">
                     <i class="fas fa-cog w-5"></i>
                     <span>الإعدادات</span>
                 </a>
+                @endif
             </nav>
 
             <!-- User Info -->
@@ -160,6 +174,8 @@
                                 <option value="{{ $clinicBranch->id }}" selected>{{ $clinicBranch->branch_name }}</option>
                             @endif
                         </select>
+                        @elseif($isSecretary ?? false)
+                        <span class="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">{{ $clinicBranch->branch_name ?? 'الفرع' }}</span>
                         @endif
                         <div class="relative">
                         <button onclick="toggleNotificationsMenu()" class="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">

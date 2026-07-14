@@ -39,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'clinic.context'   => \App\Http\Middleware\ShareClinicDashboardContext::class,
             'clinic.permission'=> \App\Http\Middleware\ClinicPermissionMiddleware::class,
             'clinic.owner'     => \App\Http\Middleware\ClinicOwnerMiddleware::class,
+            'clinic.subscription' => \App\Http\Middleware\ClinicActiveSubscriptionMiddleware::class,
             'mobile.feature'   => \App\Http\Middleware\MobileFeatureMiddleware::class,
             'doctor.approved'  => \App\Http\Middleware\DoctorApprovedMiddleware::class,
             'doctor.email.verified' => \App\Http\Middleware\DoctorEmailVerifiedMiddleware::class,

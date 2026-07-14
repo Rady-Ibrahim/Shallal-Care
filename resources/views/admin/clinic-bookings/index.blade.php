@@ -18,7 +18,7 @@
                 <option value="">جميع الحالات</option>
                 <option value="scheduled">محجوز</option>
                 <option value="checked_in">حضر</option>
-                <option value="waiting">في الدور</option>
+                <option value="waiting">في الانتظار</option>
                 <option value="with_doctor">عند الطبيب</option>
                 <option value="completed">مكتمل</option>
                 <option value="cancelled">ملغي</option>
@@ -213,7 +213,7 @@ function getStatusText(status) {
     const texts = {
         scheduled: 'محجوز',
         checked_in: 'حضر',
-        waiting: 'في الدور',
+        waiting: 'في الانتظار',
         with_doctor: 'عند الطبيب',
         completed: 'مكتمل',
         cancelled: 'ملغي',

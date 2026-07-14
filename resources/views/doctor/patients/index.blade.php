@@ -153,8 +153,8 @@ function renderPatientsGrid(patients) {
                     <span>${patient.email || '-'}</span>
                 </p>
                 <p class="text-sm text-gray-600">
-                    <span class="font-semibold">المواعيد:</span>
-                    <span>${patient.total_appointments || 0}</span>
+                    <span class="font-semibold">الزيارات:</span>
+                    <span>${patient.total_visits || 0}</span>
                 </p>
                 <p class="text-sm text-gray-600">
                     <span class="font-semibold">آخر زيارة:</span>
@@ -216,7 +216,7 @@ function applyFilters() {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 
 function openGhostModal() {

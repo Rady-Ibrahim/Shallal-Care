@@ -29,6 +29,11 @@ class DoctorSchedule extends Model
         return $this->belongsTo(Doctor::class);
     }
 
+    public function branch()
+    {
+        return $this->belongsTo(DoctorBranch::class, 'doctor_branch_id');
+    }
+
     public function appointments()
     {
         return $this->hasMany(\Modules\Appointment\Models\Appointment::class);

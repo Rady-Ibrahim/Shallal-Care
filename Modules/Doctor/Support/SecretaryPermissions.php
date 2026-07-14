@@ -12,10 +12,6 @@ class SecretaryPermissions
 
     public const QUEUE_MANAGE = 'queue.manage';
 
-    public const APPOINTMENTS_VIEW = 'appointments.view';
-
-    public const APPOINTMENTS_MANAGE = 'appointments.manage';
-
     public const PATIENTS_VIEW = 'patients.view';
 
     public const PATIENTS_MANAGE = 'patients.manage';
@@ -48,9 +44,7 @@ class SecretaryPermissions
         self::RECEPTION_VIEW => 'عرض الاستقبال',
         self::RECEPTION_MANAGE => 'إدارة الاستقبال',
         self::QUEUE_VIEW => 'عرض الدور',
-        self::QUEUE_MANAGE => 'إدارة الدور',
-        self::APPOINTMENTS_VIEW => 'عرض المواعيد',
-        self::APPOINTMENTS_MANAGE => 'إدارة المواعيد',
+        self::QUEUE_MANAGE => 'إدارة الدور (استدعاء وإنهاء)',
         self::PATIENTS_VIEW => 'عرض المرضى',
         self::PATIENTS_MANAGE => 'إضافة وتعديل المرضى',
         self::PRESCRIPTIONS_VIEW => 'عرض الروشتات',
@@ -72,7 +66,6 @@ class SecretaryPermissions
         self::RECEPTION_MANAGE,
         self::QUEUE_VIEW,
         self::QUEUE_MANAGE,
-        self::APPOINTMENTS_VIEW,
         self::PATIENTS_VIEW,
         self::PATIENTS_MANAGE,
         self::PRESCRIPTIONS_VIEW,

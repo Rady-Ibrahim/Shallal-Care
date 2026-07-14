@@ -16,6 +16,9 @@ class ReceptionService
 {
     public function createBooking(int $doctorId, int $branchId, int $registeredByUserId, array $data): array
     {
+        app(\Modules\Subscription\Services\SubscriptionService::class)
+            ->assertCanCreateClinicBooking($doctorId);
+
         return DB::transaction(function () use ($doctorId, $branchId, $registeredByUserId, $data) {
             $doctor = Doctor::findOrFail($doctorId);
             $patient = $this->resolvePatientUser($doctor, $data);

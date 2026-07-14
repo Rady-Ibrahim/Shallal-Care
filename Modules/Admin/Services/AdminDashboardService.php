@@ -6,6 +6,7 @@ use Modules\Doctor\Models\Doctor;
 use Modules\Doctor\Models\DoctorBranch;
 use Modules\Doctor\Models\ClinicBooking;
 use Modules\Doctor\Models\ClinicPatient;
+use Modules\Doctor\Models\ClinicStaffMember;
 use Modules\Doctor\Models\BranchTransaction;
 use Modules\Doctor\Models\Speciality;
 use Modules\Auth\Models\User;
@@ -27,24 +28,38 @@ class AdminDashboardService
 
         $totalPatients = User::where('role', 'patient')->where('status', 'active')->count();
         $ghostPatients = User::where('role', 'patient')->where('is_ghost', true)->count();
-        $realPatients = $totalPatients - $ghostPatients;
 
-        $totalAppointments = Appointment::count();
-        $todayAppointments = Appointment::whereDate('appointment_date', today())->count();
-        $completedAppointments = Appointment::where('status', 'completed')->count();
-        $pendingAppointments = Appointment::where('status', 'pending')->count();
-        $cancelledAppointments = Appointment::where('status', 'cancelled')->count();
+        $clinicBookingsTotal = ClinicBooking::count();
+        $clinicBookingsToday = ClinicBooking::whereDate('visit_date', today())->count();
+        $clinicBookingsCompleted = ClinicBooking::where('status', ClinicBooking::STATUS_COMPLETED)->count();
+        $clinicBookingsWaiting = ClinicBooking::whereDate('visit_date', today())
+            ->whereIn('status', [ClinicBooking::STATUS_WAITING, ClinicBooking::STATUS_WITH_DOCTOR])
+            ->count();
+        $clinicBookingsCancelled = ClinicBooking::where('status', ClinicBooking::STATUS_CANCELLED)->count();
+        $clinicPatientsTotal = ClinicPatient::count();
+        $clinicBranchesTotal = DoctorBranch::count();
+        $clinicStaffActive = ClinicStaffMember::where('status', 'active')->count();
+        $clinicRevenueToday = BranchTransaction::where('type', 'income')
+            ->whereDate('created_at', today())
+            ->sum('amount');
+        $clinicRevenueMonth = BranchTransaction::where('type', 'income')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('amount');
+        $clinicExpenseMonth = BranchTransaction::where('type', 'expense')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('amount');
 
-        $totalRevenue = DoctorSubscription::sum('amount_paid');
-        $monthlyRevenue = DoctorSubscription::whereMonth('created_at', now()->month)
+        $subscriptionRevenueTotal = DoctorSubscription::sum('amount_paid');
+        $monthlySubscriptionRevenue = DoctorSubscription::whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->sum('amount_paid');
-
-        $lastMonthRevenue = DoctorSubscription::whereMonth('created_at', now()->subMonth()->month)
+        $lastMonthSubscriptionRevenue = DoctorSubscription::whereMonth('created_at', now()->subMonth()->month)
             ->whereYear('created_at', now()->subMonth()->year)
             ->sum('amount_paid');
-        $revenueGrowth = $lastMonthRevenue > 0
-            ? round((($monthlyRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100, 1)
+        $subscriptionGrowth = $lastMonthSubscriptionRevenue > 0
+            ? round((($monthlySubscriptionRevenue - $lastMonthSubscriptionRevenue) / $lastMonthSubscriptionRevenue) * 100, 1)
             : 0;
 
         $avgRating = Review::approved()->avg('rating') ?? 0;
@@ -53,19 +68,6 @@ class AdminDashboardService
 
         $activeSubscriptions = DoctorSubscription::where('status', 'active')->count();
         $expiredSubscriptions = DoctorSubscription::where('status', 'expired')->count();
-
-        $clinicBookingsTotal = ClinicBooking::count();
-        $clinicBookingsToday = ClinicBooking::whereDate('visit_date', today())->count();
-        $clinicBookingsCompleted = ClinicBooking::where('status', ClinicBooking::STATUS_COMPLETED)->count();
-        $clinicPatientsTotal = ClinicPatient::count();
-        $clinicBranchesTotal = DoctorBranch::count();
-        $clinicRevenueToday = BranchTransaction::where('type', 'income')
-            ->whereDate('created_at', today())
-            ->sum('amount');
-        $clinicRevenueMonth = BranchTransaction::where('type', 'income')
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('amount');
 
         return [
             'doctors' => [
@@ -76,38 +78,34 @@ class AdminDashboardService
             ],
             'patients' => [
                 'total' => $totalPatients,
-                'real' => $realPatients,
+                'clinic' => $clinicPatientsTotal,
                 'ghost' => $ghostPatients,
             ],
-            'appointments' => [
-                'total' => $totalAppointments,
-                'today' => $todayAppointments,
-                'completed' => $completedAppointments,
-                'pending' => $pendingAppointments,
-                'cancelled' => $cancelledAppointments,
-            ],
-            'revenue' => [
-                'total' => $totalRevenue,
-                'monthly' => $monthlyRevenue,
-                'growth' => $revenueGrowth,
+            'subscriptions' => [
+                'total_revenue' => (float) $subscriptionRevenueTotal,
+                'monthly' => (float) $monthlySubscriptionRevenue,
+                'growth' => $subscriptionGrowth,
+                'active' => $activeSubscriptions,
+                'expired' => $expiredSubscriptions,
             ],
             'reviews' => [
                 'average' => round($avgRating, 2),
                 'total' => $totalReviews,
                 'pending' => $pendingReviews,
             ],
-            'subscriptions' => [
-                'active' => $activeSubscriptions,
-                'expired' => $expiredSubscriptions,
-            ],
             'clinic' => [
                 'bookings_total' => $clinicBookingsTotal,
                 'bookings_today' => $clinicBookingsToday,
                 'bookings_completed' => $clinicBookingsCompleted,
+                'bookings_waiting' => $clinicBookingsWaiting,
+                'bookings_cancelled' => $clinicBookingsCancelled,
                 'patients' => $clinicPatientsTotal,
                 'branches' => $clinicBranchesTotal,
+                'staff' => $clinicStaffActive,
                 'revenue_today' => (float) $clinicRevenueToday,
                 'revenue_month' => (float) $clinicRevenueMonth,
+                'expense_month' => (float) $clinicExpenseMonth,
+                'net_month' => (float) ($clinicRevenueMonth - $clinicExpenseMonth),
             ],
         ];
     }
@@ -116,7 +114,10 @@ class AdminDashboardService
     {
         $limit = (int) ($filters['limit'] ?? 20);
 
-        $query = Doctor::with(['user', 'speciality', 'subscription']);
+        $query = Doctor::with(['user', 'speciality', 'subscription'])
+            ->withCount('branches')
+            ->withCount('clinicBookings as visits_count')
+            ->withCount(['clinicBookings as bookings_today' => fn ($q) => $q->whereDate('visit_date', today())]);
 
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -128,7 +129,8 @@ class AdminDashboardService
 
         if (isset($filters['search'])) {
             $query->whereHas('user', function ($q) use ($filters) {
-                $q->where('name', 'like', '%' . $filters['search'] . '%');
+                $q->where('name', 'like', '%'.$filters['search'].'%')
+                    ->orWhere('phone', 'like', '%'.$filters['search'].'%');
             });
         }
 
@@ -141,10 +143,16 @@ class AdminDashboardService
     {
         $doctor = Doctor::with(['user', 'speciality', 'branches', 'schedules'])->findOrFail($doctorId);
 
-        $totalAppointments = Appointment::where('doctor_id', $doctorId)->count();
-        $completedAppointments = Appointment::where('doctor_id', $doctorId)->where('status', 'completed')->count();
-        $totalPatients = Appointment::where('doctor_id', $doctorId)->distinct('patient_id')->count('patient_id');
+        $totalVisits = ClinicBooking::where('doctor_id', $doctorId)->count();
+        $completedVisits = ClinicBooking::where('doctor_id', $doctorId)
+            ->where('status', ClinicBooking::STATUS_COMPLETED)
+            ->count();
+        $totalPatients = ClinicPatient::where('doctor_id', $doctorId)->count();
         $totalReviews = Review::where('doctor_id', $doctorId)->approved()->count();
+        $staffCount = ClinicStaffMember::where('doctor_id', $doctorId)->where('status', 'active')->count();
+        $clinicRevenue = BranchTransaction::where('doctor_id', $doctorId)
+            ->where('type', 'income')
+            ->sum('amount');
 
         $recentReviews = Review::where('doctor_id', $doctorId)
             ->approved()
@@ -180,10 +188,14 @@ class AdminDashboardService
             'license_document' => storage_public_url($doctor->license_document),
             'clinic_image' => storage_public_url($doctor->clinic_image),
             'created_at' => $doctor->created_at,
-            'total_appointments' => $totalAppointments,
-            'completed_appointments' => $completedAppointments,
+            'total_visits' => $totalVisits,
+            'completed_visits' => $completedVisits,
             'total_patients' => $totalPatients,
+            'staff_count' => $staffCount,
+            'clinic_revenue' => (float) $clinicRevenue,
             'total_reviews' => $totalReviews,
+            'total_appointments' => $totalVisits,
+            'completed_appointments' => $completedVisits,
             'branches' => $doctor->branches->map(fn ($branch) => [
                 'id' => $branch->id,
                 'name' => $branch->branch_name,
@@ -213,7 +225,8 @@ class AdminDashboardService
     {
         $limit = (int) ($filters['limit'] ?? 20);
 
-        $query = User::where('role', 'patient')->withCount('appointments as total_appointments');
+        $query = User::where('role', 'patient')
+            ->withCount('clinicBookings as total_bookings');
 
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -230,97 +243,271 @@ class AdminDashboardService
         }
 
         if (isset($filters['search'])) {
-            $query->where('name', 'like', '%' . $filters['search'] . '%');
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%');
+            });
         }
 
         $patients = $query->orderBy('created_at', 'desc')->paginate($limit);
+        $patients->getCollection()->transform(fn (User $patient) => $this->formatPatient($patient));
+
+        return $patients;
+    }
+
+    public function getPatientDetails(int $patientId): array
+    {
+        $patient = User::where('role', 'patient')->findOrFail($patientId);
+
+        $totalBookings = ClinicBooking::where('patient_id', $patientId)->count();
+        $completedBookings = ClinicBooking::where('patient_id', $patientId)
+            ->where('status', ClinicBooking::STATUS_COMPLETED)
+            ->count();
+        $cancelledBookings = ClinicBooking::where('patient_id', $patientId)
+            ->where('status', ClinicBooking::STATUS_CANCELLED)
+            ->count();
+
+        $clinicProfiles = ClinicPatient::where('patient_id', $patientId)
+            ->with(['doctor.user', 'branch'])
+            ->withCount('bookings')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (ClinicPatient $profile) => [
+                'id' => $profile->id,
+                'file_number' => $profile->file_number,
+                'doctor_name' => $profile->doctor?->user?->name,
+                'doctor_id' => $profile->doctor_id,
+                'branch_name' => $profile->branch?->branch_name,
+                'bookings_count' => $profile->bookings_count,
+                'allergies' => $profile->allergies,
+                'chronic_conditions' => $profile->chronic_conditions,
+                'created_at' => $profile->created_at?->format('Y-m-d'),
+            ])
+            ->values()
+            ->all();
+
+        $recentBookings = ClinicBooking::where('patient_id', $patientId)
+            ->with(['doctor.user', 'doctor.speciality', 'branch'])
+            ->orderByDesc('visit_date')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get()
+            ->map(fn (ClinicBooking $booking) => $this->formatClinicBooking($booking))
+            ->values()
+            ->all();
+
+        return array_merge($this->formatPatient($patient), [
+            'total_bookings' => $totalBookings,
+            'completed_bookings' => $completedBookings,
+            'cancelled_bookings' => $cancelledBookings,
+            'total_appointments' => $totalBookings,
+            'completed_appointments' => $completedBookings,
+            'cancelled_appointments' => $cancelledBookings,
+            'clinic_profiles_count' => count($clinicProfiles),
+            'clinic_profiles' => $clinicProfiles,
+            'recent_bookings' => $recentBookings,
+            'recent_appointments' => $recentBookings,
+        ]);
+    }
+
+    public function getClinicPatientsStats(array $filters = [])
+    {
+        $limit = (int) ($filters['limit'] ?? 20);
+
+        $query = ClinicPatient::with(['patient', 'doctor.user', 'branch'])
+            ->withCount('bookings');
+
+        if (! empty($filters['doctor_id'])) {
+            $query->where('doctor_id', (int) $filters['doctor_id']);
+        }
+
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('file_number', 'like', '%'.$search.'%')
+                    ->orWhereHas('patient', function ($sub) use ($search) {
+                        $sub->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('phone', 'like', '%'.$search.'%');
+                    })
+                    ->orWhereHas('doctor.user', function ($sub) use ($search) {
+                        $sub->where('name', 'like', '%'.$search.'%');
+                    });
+            });
+        }
+
+        $patients = $query->orderByDesc('created_at')->paginate($limit);
+        $patients->getCollection()->transform(fn (ClinicPatient $profile) => $this->formatClinicPatient($profile));
 
         return $patients;
     }
 
     public function getAppointmentsStats($filters = [])
     {
+        return $this->getClinicBookingsStats($filters);
+    }
+
+    public function getClinicBookingsStats(array $filters = [])
+    {
         $limit = (int) ($filters['limit'] ?? 20);
 
-        $query = Appointment::with(['doctor.user', 'doctor.speciality', 'patient']);
+        $query = ClinicBooking::with(['doctor.user', 'doctor.speciality', 'patient', 'branch']);
 
-        if (isset($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        if (isset($filters['date_from'])) {
-            $query->whereDate('appointment_date', '>=', $filters['date_from']);
+        if (! empty($filters['doctor_id'])) {
+            $query->where('doctor_id', (int) $filters['doctor_id']);
         }
 
-        if (isset($filters['date_to'])) {
-            $query->whereDate('appointment_date', '<=', $filters['date_to']);
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('visit_date', '>=', $filters['date_from']);
         }
 
-        $appointments = $query->orderBy('appointment_date', 'desc')->paginate($limit);
-        $appointments->getCollection()->transform(fn ($appointment) => $this->formatAppointment($appointment));
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('visit_date', '<=', $filters['date_to']);
+        }
 
-        return $appointments;
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('patient', function ($sub) use ($search) {
+                    $sub->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%');
+                })->orWhereHas('doctor.user', function ($sub) use ($search) {
+                    $sub->where('name', 'like', '%'.$search.'%');
+                })->orWhere('booking_number', 'like', '%'.$search.'%');
+            });
+        }
+
+        $bookings = $query->orderByDesc('visit_date')->orderByDesc('created_at')->paginate($limit);
+        $bookings->getCollection()->transform(fn (ClinicBooking $booking) => $this->formatClinicBooking($booking));
+
+        return $bookings;
     }
 
     public function getRevenueDashboardData(array $filters = []): array
     {
         [$startDate, $endDate] = $this->resolveDateRange($filters);
 
+        $clinicIncomeQuery = BranchTransaction::with(['doctor.user', 'branch'])
+            ->where('type', 'income')
+            ->whereBetween('created_at', [$startDate, $endDate]);
+
+        $clinicExpenseQuery = BranchTransaction::where('type', 'expense')
+            ->whereBetween('created_at', [$startDate, $endDate]);
+
         $subscriptionQuery = DoctorSubscription::with(['doctor.user', 'subscription'])
             ->whereBetween('created_at', [$startDate, $endDate]);
 
-        $totalRevenue = (clone $subscriptionQuery)->sum('amount_paid');
-        $transactionCount = (clone $subscriptionQuery)->count();
-        $completedAppointments = Appointment::where('status', 'completed')
-            ->whereBetween('created_at', [$startDate, $endDate])
+        $clinicIncome = (float) (clone $clinicIncomeQuery)->sum('amount');
+        $clinicExpense = (float) (clone $clinicExpenseQuery)->sum('amount');
+        $subscriptionRevenue = (float) (clone $subscriptionQuery)->sum('amount_paid');
+        $totalCombined = $clinicIncome + $subscriptionRevenue;
+
+        $completedVisits = ClinicBooking::where('status', ClinicBooking::STATUS_COMPLETED)
+            ->whereBetween('visit_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->count();
 
-        $recentTransactions = (clone $subscriptionQuery)
+        $clinicTransactions = (clone $clinicIncomeQuery)
             ->orderByDesc('created_at')
-            ->limit(10)
+            ->limit(8)
+            ->get()
+            ->map(fn ($item) => [
+                'date' => $item->created_at?->format('Y-m-d'),
+                'type' => 'clinic_income',
+                'description' => ($item->doctor?->user?->name ?? 'عيادة').' — '.($item->branch?->branch_name ?? 'فرع'),
+                'amount' => (float) $item->amount,
+            ]);
+
+        $subscriptionTransactions = (clone $subscriptionQuery)
+            ->orderByDesc('created_at')
+            ->limit(5)
             ->get()
             ->map(fn ($item) => [
                 'date' => $item->created_at?->format('Y-m-d'),
                 'type' => 'subscription',
-                'description' => 'اشتراك: ' . ($item->doctor?->user?->name ?? 'طبيب'),
-                'amount' => $item->amount_paid,
-            ])
+                'description' => 'اشتراك: '.($item->doctor?->user?->name ?? 'طبيب'),
+                'amount' => (float) $item->amount_paid,
+            ]);
+
+        $recentTransactions = $clinicTransactions
+            ->concat($subscriptionTransactions)
+            ->sortByDesc('date')
+            ->take(10)
             ->values()
             ->all();
 
         $topPerformers = Doctor::with('user')
-            ->withCount(['appointments as appointments_count' => fn ($q) => $q->whereBetween('appointments.created_at', [$startDate, $endDate])])
-            ->orderByDesc('appointments_count')
+            ->withCount(['clinicBookings as visits_count' => fn ($q) => $q
+                ->where('status', ClinicBooking::STATUS_COMPLETED)
+                ->whereBetween('visit_date', [$startDate->toDateString(), $endDate->toDateString()])])
+            ->orderByDesc('visits_count')
             ->limit(5)
             ->get()
             ->map(fn ($doctor) => [
                 'name' => $doctor->user?->name,
-                'appointments' => $doctor->appointments_count,
-                'revenue' => DoctorSubscription::where('doctor_id', $doctor->id)
+                'visits' => $doctor->visits_count,
+                'revenue' => (float) BranchTransaction::where('doctor_id', $doctor->id)
+                    ->where('type', 'income')
                     ->whereBetween('created_at', [$startDate, $endDate])
-                    ->sum('amount_paid'),
+                    ->sum('amount'),
             ])
             ->values()
             ->all();
 
-        $subscriptionRevenue = $totalRevenue;
-        $appointmentRevenue = Appointment::where('status', 'completed')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->sum('price');
+        $transactionCount = (clone $subscriptionQuery)->count() + (clone $clinicIncomeQuery)->count();
 
-        $totalCombined = $subscriptionRevenue + $appointmentRevenue;
+        $dailyClinicRevenue = BranchTransaction::where('type', 'income')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->pluck('total', 'date');
+
+        $dailySubscriptionRevenue = DoctorSubscription::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, SUM(amount_paid) as total')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->pluck('total', 'date');
+
+        $dailyRevenue = [];
+        $cursor = $startDate->copy()->startOfDay();
+        $end = $endDate->copy()->startOfDay();
+        while ($cursor->lte($end)) {
+            $key = $cursor->toDateString();
+            $clinic = (float) ($dailyClinicRevenue[$key] ?? 0);
+            $subs = (float) ($dailySubscriptionRevenue[$key] ?? 0);
+            $dailyRevenue[] = [
+                'date' => $key,
+                'clinic_income' => $clinic,
+                'subscription_revenue' => $subs,
+                'total' => $clinic + $subs,
+            ];
+            $cursor->addDay();
+        }
 
         return [
             'total_revenue' => $totalCombined,
-            'completed_appointments' => $completedAppointments,
+            'clinic_income' => $clinicIncome,
+            'clinic_expense' => $clinicExpense,
+            'clinic_net' => $clinicIncome - $clinicExpense,
+            'completed_visits' => $completedVisits,
+            'completed_appointments' => $completedVisits,
             'subscription_revenue' => $subscriptionRevenue,
-            'average_revenue' => $transactionCount > 0 ? round($totalRevenue / $transactionCount, 2) : 0,
+            'average_revenue' => $transactionCount > 0 ? round($totalCombined / $transactionCount, 2) : 0,
             'revenue_by_category' => [
+                ['name' => 'إيرادات العيادات', 'amount' => $clinicIncome, 'percentage' => $totalCombined > 0 ? round(($clinicIncome / $totalCombined) * 100) : 0],
                 ['name' => 'اشتراكات الأطباء', 'amount' => $subscriptionRevenue, 'percentage' => $totalCombined > 0 ? round(($subscriptionRevenue / $totalCombined) * 100) : 0],
-                ['name' => 'مواعيد مكتملة', 'amount' => $appointmentRevenue, 'percentage' => $totalCombined > 0 ? round(($appointmentRevenue / $totalCombined) * 100) : 0],
             ],
+            'daily_revenue' => $dailyRevenue,
             'top_performers' => $topPerformers,
             'recent_transactions' => $recentTransactions,
+            'period' => [
+                'from' => $startDate->toDateString(),
+                'to' => $endDate->toDateString(),
+            ],
         ];
     }
 
@@ -388,13 +575,20 @@ class AdminDashboardService
             ->orderBy('date')
             ->get();
 
-        $dailyAppointments = Appointment::where('created_at', '>=', $startDate)
+        $dailyBookings = ClinicBooking::where('created_at', '>=', $startDate)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
             ->orderBy('date')
             ->get();
 
-        $dailyRevenue = DoctorSubscription::where('created_at', '>=', $startDate)
+        $dailyRevenue = BranchTransaction::where('type', 'income')
+            ->where('created_at', '>=', $startDate)
+            ->selectRaw('DATE(created_at) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        $subscriptionDailyRevenue = DoctorSubscription::where('created_at', '>=', $startDate)
             ->selectRaw('DATE(created_at) as date, SUM(amount_paid) as total')
             ->groupBy('date')
             ->orderBy('date')
@@ -402,9 +596,12 @@ class AdminDashboardService
 
         $totalUsers = User::count();
         $activeDoctors = Doctor::where('status', 'approved')->count();
-        $dailyAppointmentsCount = Appointment::whereDate('appointment_date', today())->count();
-        $totalAppointments = Appointment::count();
-        $conversionRate = $totalUsers > 0 ? round(($totalAppointments / $totalUsers) * 100, 1) : 0;
+        $dailyBookingsCount = ClinicBooking::whereDate('visit_date', today())->count();
+        $totalBookings = ClinicBooking::count();
+        $clinicPatientsTotal = ClinicPatient::count();
+        $conversionRate = $clinicPatientsTotal > 0
+            ? round(($totalBookings / $clinicPatientsTotal) * 100, 1)
+            : 0;
 
         $specialities = Speciality::withCount('doctors')->orderByDesc('doctors_count')->limit(5)->get();
         $totalDoctorsForSpecialities = max($specialities->sum('doctors_count'), 1);
@@ -419,8 +616,9 @@ class AdminDashboardService
         $femaleCount = User::where('role', 'patient')->where('gender', 'female')->count();
         $patientTotal = max($maleCount + $femaleCount, 1);
 
-        $peakHoursRaw = Appointment::where('created_at', '>=', $startDate)
-            ->selectRaw('HOUR(appointment_time) as hour, COUNT(*) as count')
+        $peakHoursRaw = ClinicBooking::where('created_at', '>=', $startDate)
+            ->whereNotNull('checked_in_at')
+            ->selectRaw('HOUR(checked_in_at) as hour, COUNT(*) as count')
             ->groupBy('hour')
             ->orderByDesc('count')
             ->limit(5)
@@ -455,8 +653,11 @@ class AdminDashboardService
         return [
             'total_users' => $totalUsers,
             'active_doctors' => $activeDoctors,
-            'daily_appointments' => $dailyAppointmentsCount,
+            'daily_bookings' => $dailyBookingsCount,
+            'daily_appointments' => $dailyBookingsCount,
             'conversion_rate' => $conversionRate,
+            'clinic_patients' => ClinicPatient::count(),
+            'clinic_branches' => DoctorBranch::count(),
             'top_specialities' => $topSpecialities,
             'demographics' => [
                 'male' => $maleCount,
@@ -469,8 +670,10 @@ class AdminDashboardService
             'peak_hours' => $peakHours,
             'geographic_distribution' => $geographicDistribution,
             'users' => $dailyUsers,
-            'appointments' => $dailyAppointments,
+            'bookings' => $dailyBookings,
+            'appointments' => $dailyBookings,
             'revenue' => $dailyRevenue,
+            'subscription_revenue' => $subscriptionDailyRevenue,
             'type' => $type,
         ];
     }
@@ -506,6 +709,77 @@ class AdminDashboardService
         $doctor->status = 'approved';
         $doctor->save();
         return $doctor;
+    }
+
+    protected function formatPatient(User $patient): array
+    {
+        $totalBookings = $patient->total_bookings ?? $patient->clinic_bookings_count ?? 0;
+
+        return [
+            'id' => $patient->id,
+            'name' => $patient->name,
+            'phone' => $patient->phone,
+            'email' => $patient->email,
+            'status' => $patient->status,
+            'is_ghost' => (bool) $patient->is_ghost,
+            'created_at' => $patient->created_at,
+            'total_bookings' => $totalBookings,
+            'total_appointments' => $totalBookings,
+        ];
+    }
+
+    protected function formatClinicPatient(ClinicPatient $profile): array
+    {
+        return [
+            'id' => $profile->id,
+            'file_number' => $profile->file_number,
+            'patient_id' => $profile->patient_id,
+            'patient_name' => $profile->patient?->name,
+            'patient_phone' => $profile->patient?->phone,
+            'doctor_id' => $profile->doctor_id,
+            'doctor_name' => $profile->doctor?->user?->name,
+            'branch_name' => $profile->branch?->branch_name,
+            'bookings_count' => $profile->bookings_count ?? 0,
+            'allergies' => $profile->allergies,
+            'chronic_conditions' => $profile->chronic_conditions,
+            'created_at' => $profile->created_at?->format('Y-m-d'),
+        ];
+    }
+
+    protected function formatClinicBooking(ClinicBooking $booking): array
+    {
+        return [
+            'id' => $booking->id,
+            'booking_number' => $booking->display_booking_number,
+            'patient_name' => $booking->patient?->name,
+            'patient_phone' => $booking->patient?->phone,
+            'doctor_name' => $booking->doctor?->user?->name,
+            'doctor_id' => $booking->doctor_id,
+            'speciality' => $booking->doctor?->speciality?->name_ar,
+            'branch_name' => $booking->branch?->branch_name,
+            'visit_date' => $booking->visit_date?->format('Y-m-d'),
+            'date' => $booking->visit_date?->format('Y-m-d'),
+            'consultation_fee' => (float) $booking->consultation_fee,
+            'price' => (float) $booking->consultation_fee,
+            'payment_status' => $booking->payment_status,
+            'status' => $booking->status,
+            'status_label' => $this->clinicBookingStatusLabel($booking->status),
+            'created_at' => $booking->created_at?->format('Y-m-d H:i'),
+        ];
+    }
+
+    protected function clinicBookingStatusLabel(string $status): string
+    {
+        return match ($status) {
+            ClinicBooking::STATUS_SCHEDULED => 'محجوز',
+            ClinicBooking::STATUS_CHECKED_IN => 'حضر',
+            ClinicBooking::STATUS_WAITING => 'في الدور',
+            ClinicBooking::STATUS_WITH_DOCTOR => 'عند الطبيب',
+            ClinicBooking::STATUS_COMPLETED => 'مكتمل',
+            ClinicBooking::STATUS_CANCELLED => 'ملغي',
+            ClinicBooking::STATUS_NO_SHOW => 'لم يحضر',
+            default => $status,
+        };
     }
 
     protected function formatAppointment(Appointment $appointment): array
@@ -557,9 +831,9 @@ class AdminDashboardService
 
         $start = match ($filters['period'] ?? 'month') {
             'today' => now()->startOfDay(),
-            'week' => now()->subWeek()->startOfDay(),
-            'month' => now()->subMonth()->startOfDay(),
-            'year' => now()->subYear()->startOfDay(),
+            'week' => now()->startOfWeek()->startOfDay(),
+            'month' => now()->startOfMonth()->startOfDay(),
+            'year' => now()->startOfYear()->startOfDay(),
             default => now()->subMonth()->startOfDay(),
         };
 

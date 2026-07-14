@@ -12,7 +12,16 @@ class ClinicPermissionMiddleware
     {
         $context = ClinicDashboardContext::resolve();
 
-        if (! $context->hasPermission($permission)) {
+        $permissions = array_map('trim', explode('|', $permission));
+        $allowed = false;
+        foreach ($permissions as $perm) {
+            if ($context->hasPermission($perm)) {
+                $allowed = true;
+                break;
+            }
+        }
+
+        if (! $allowed) {
             if ($request->expectsJson() || $request->is('doctor/api/*')) {
                 return response()->json([
                     'success' => false,

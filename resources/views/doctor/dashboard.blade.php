@@ -1,12 +1,13 @@
 @extends('doctor.layout')
 
-@section('title', 'لوحة تحكم الطبيب - الرئيسية')
-@section('page-title', 'نظرة عامة')
-@section('page-description', 'إحصائياتك وأنشطتك اليومية')
+@section('title', ($isSecretary ?? false) ? 'لوحة السكرتير - الرئيسية' : 'لوحة العيادة - الرئيسية')
+@section('page-title', ($isSecretary ?? false) ? 'لوحة السكرتير' : 'نظرة عامة')
+@section('page-description', ($isSecretary ?? false) ? 'متابعة يوم العيادة والدور' : 'إحصائياتك وأنشطة العيادة اليومية')
 
 @section('content')
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    @if($canViewPatients)
     <!-- Total Patients -->
     <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-teal-500">
         <div class="flex items-center justify-between">
@@ -20,7 +21,9 @@
             </div>
         </div>
     </div>
+    @endif
 
+    @if($canViewReception || $canViewQueue)
     <!-- Today's Appointments -->
     <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-blue-500">
         <div class="flex items-center justify-between">
@@ -34,7 +37,9 @@
             </div>
         </div>
     </div>
+    @endif
 
+    @if($canViewPrescriptions)
     <!-- Prescriptions -->
     <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-purple-500">
         <div class="flex items-center justify-between">
@@ -48,7 +53,9 @@
             </div>
         </div>
     </div>
+    @endif
 
+    @if($canViewQueue)
     <!-- Queue Today -->
     <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-yellow-500">
         <div class="flex items-center justify-between">
@@ -62,8 +69,10 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
 
+@if($canViewReception || $canViewQueue)
 <!-- Daily Clinic Stats -->
 <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
@@ -83,15 +92,20 @@
             <p class="text-xs text-gray-600">في الانتظار</p>
             <p id="clinicWaiting" class="text-2xl font-bold text-amber-700 mt-1">0</p>
         </div>
+        @if($canViewFinance)
         <div class="p-4 rounded-lg bg-amber-50">
             <p class="text-xs text-gray-600">إيراد اليوم</p>
             <p id="clinicRevenue" class="text-2xl font-bold text-amber-700 mt-1">0</p>
         </div>
+        @endif
     </div>
 </div>
+@endif
 
+@if($canViewReception || $canViewQueue)
 <!-- Today's Activity & Upcoming Tasks -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    @if($canViewReception)
     <!-- Today's Appointments -->
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between mb-6">
@@ -106,7 +120,9 @@
             </div>
         </div>
     </div>
+    @endif
 
+    @if($canViewQueue)
     <!-- Upcoming Tasks -->
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between mb-6">
@@ -121,8 +137,11 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
+@endif
 
+@if($canViewPatients)
 <!-- Recent Patients -->
 <div class="bg-white rounded-xl shadow-sm p-6">
     <div class="flex items-center justify-between mb-6">
@@ -137,16 +156,24 @@
         </div>
     </div>
 </div>
+@endif
 
 @endsection
 
 @section('scripts')
 <script>
+    const canViewPatients = @json($canViewPatients);
+    const canViewPrescriptions = @json($canViewPrescriptions);
+    const canViewReception = @json($canViewReception);
+    const canViewQueue = @json($canViewQueue);
+    const canViewRecords = @json($canViewRecords);
+    const canViewFinance = @json($canViewFinance);
+
     window.addEventListener('load', async function() {
-        await loadDashboardMetrics();
-        await loadTodayActivity();
-        await loadUpcomingTasks();
-        await loadRecentPatients();
+        if (canViewReception || canViewQueue) await loadDashboardMetrics();
+        if (canViewReception) await loadTodayActivity();
+        if (canViewQueue) await loadUpcomingTasks();
+        if (canViewPatients) await loadRecentPatients();
     });
 
     async function loadDashboardMetrics() {
@@ -155,25 +182,34 @@
             
             if (data.success) {
                 const metrics = data.data;
-
-                // Update stats
-                document.getElementById('totalPatients').textContent = metrics.patients?.total || 0;
-                document.getElementById('newPatientsCount').textContent = `${metrics.patients?.new_this_month || 0} جديد هذا الشهر`;
-
                 const clinic = metrics.clinic_today || {};
-                document.getElementById('todayAppointments').textContent = clinic.total || 0;
-                document.getElementById('upcomingAppointments').textContent = `${clinic.waiting || 0} في الدور`;
 
-                document.getElementById('totalPrescriptions').textContent = metrics.prescriptions?.total || 0;
-                document.getElementById('thisMonthPrescriptions').textContent = `${metrics.prescriptions?.this_month || 0} هذا الشهر`;
+                if (canViewPatients) {
+                    document.getElementById('totalPatients').textContent = metrics.patients?.total || 0;
+                    document.getElementById('newPatientsCount').textContent = `${metrics.patients?.new_this_month || 0} جديد هذا الشهر`;
+                }
 
-                document.getElementById('queueWaiting').textContent = clinic.waiting || 0;
-                document.getElementById('queueCompleted').textContent = `${clinic.completed || 0} مكتمل اليوم`;
+                if (canViewReception || canViewQueue) {
+                    document.getElementById('todayAppointments').textContent = clinic.total || 0;
+                    document.getElementById('upcomingAppointments').textContent = `${clinic.waiting || 0} في الانتظار`;
+                    document.getElementById('clinicCompleted').textContent = clinic.completed || 0;
+                    document.getElementById('clinicScheduled').textContent = clinic.scheduled || 0;
+                    document.getElementById('clinicWaiting').textContent = clinic.waiting || 0;
+                }
 
-                document.getElementById('clinicCompleted').textContent = clinic.completed || 0;
-                document.getElementById('clinicScheduled').textContent = clinic.scheduled || 0;
-                document.getElementById('clinicWaiting').textContent = clinic.waiting || 0;
-                document.getElementById('clinicRevenue').textContent = formatCurrency(clinic.revenue || 0);
+                if (canViewPrescriptions) {
+                    document.getElementById('totalPrescriptions').textContent = metrics.prescriptions?.total || 0;
+                    document.getElementById('thisMonthPrescriptions').textContent = `${metrics.prescriptions?.this_month || 0} هذا الشهر`;
+                }
+
+                if (canViewQueue) {
+                    document.getElementById('queueWaiting').textContent = clinic.waiting || 0;
+                    document.getElementById('queueCompleted').textContent = `${clinic.completed || 0} مكتمل اليوم`;
+                }
+
+                if (canViewFinance) {
+                    document.getElementById('clinicRevenue').textContent = formatCurrency(clinic.revenue || 0);
+                }
             }
         } catch (error) {
             console.error('Error loading metrics:', error);
@@ -210,7 +246,7 @@
                                 <p class="text-sm text-gray-500">${appointment.status_label || appointment.status}</p>
                             </div>
                         </div>
-                        <a href="/doctor/dashboard/visits/${appointment.id}" class="text-xs text-blue-600">كشف</a>
+                        ${canViewRecords ? `<a href="/doctor/dashboard/visits/${appointment.id}" class="text-xs text-blue-600">كشف</a>` : ''}
                     </div>
                 `).join('');
             }
@@ -248,7 +284,7 @@
                                 <p class="text-sm text-gray-500">في الدور</p>
                             </div>
                         </div>
-                        ${task.url ? `<a href="${task.url}" class="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg">كشف</a>` : ''}
+                        ${canViewRecords && task.url ? `<a href="${task.url}" class="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg">كشف</a>` : ''}
                     </div>
                 `).join('');
             }

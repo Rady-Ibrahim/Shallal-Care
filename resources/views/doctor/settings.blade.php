@@ -11,12 +11,14 @@
         <button onclick="showTab('profile')" id="tab-profile" class="px-4 py-3 border-b-2 border-teal-600 text-teal-600 font-semibold">
             الملف الشخصي
         </button>
+        @if($isClinicOwner)
         <button onclick="showTab('schedule')" id="tab-schedule" class="px-4 py-3 border-b-2 border-transparent text-gray-600 hover:text-gray-800">
             الجدول الزمني
         </button>
         <button onclick="showTab('subscription')" id="tab-subscription" class="px-4 py-3 border-b-2 border-transparent text-gray-600 hover:text-gray-800">
             الاشتراك
         </button>
+        @endif
         <button onclick="showTab('security')" id="tab-security" class="px-4 py-3 border-b-2 border-transparent text-gray-600 hover:text-gray-800">
             الأمان
         </button>
@@ -64,6 +66,7 @@
         </div>
 
         <!-- Professional Info -->
+        @if($isClinicOwner)
         <div class="bg-white rounded-xl shadow-sm p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-6">معلومات مهنية</h3>
             <form id="professionalForm" onsubmit="updateProfessional(event)">
@@ -94,10 +97,12 @@
                 </div>
             </form>
         </div>
+        @endif
     </div>
 </div>
 
 <!-- Schedule Tab -->
+@if($isClinicOwner)
 <div id="content-schedule" class="tab-content hidden">
     <div class="bg-white rounded-xl shadow-sm p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-6">الجدول الزمني</h3>
@@ -160,6 +165,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <!-- Security Tab -->
 <div id="content-security" class="tab-content hidden">
@@ -262,8 +268,11 @@
 <script>
 window.addEventListener('load', async function() {
     await loadProfile();
+    @if($isClinicOwner)
     await loadSchedules();
     await loadSubscription();
+    await loadBranches();
+    @endif
 });
 
 let clinicBranches = [];
@@ -394,6 +403,7 @@ function renderSchedules(schedules) {
                 <div>
                     <p class="font-semibold text-gray-800">${daysAr[schedule.day_of_week] || schedule.day_of_week}</p>
                     <p class="text-sm text-gray-600">${schedule.start_time} - ${schedule.end_time}</p>
+                    ${schedule.branch_name ? `<p class="text-xs text-gray-400">${schedule.branch_name}</p>` : ''}
                 </div>
                 <button onclick="deleteSchedule('${schedule.id}')" class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition text-sm">
                     <i class="fas fa-trash"></i>
@@ -487,7 +497,7 @@ function renderSubscription(subscription) {
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <p class="font-semibold text-gray-800">${subscription.plan_name || 'غير محدد'}</p>
-                    <p class="text-sm text-gray-600">${subscription.price || 0} د.ع</p>
+                    <p class="text-sm text-gray-600">${subscription.price || 0} {{ config('clinic.currency_symbol') }}</p>
                 </div>
                 <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColors[subscription.status] || 'bg-red-100 text-red-800'}">
                     ${statusLabels[subscription.status] || 'غير نشط'}
@@ -537,7 +547,7 @@ async function changePassword(event) {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 
 @if($isClinicOwner)

@@ -5,6 +5,12 @@
 @section('page-description', 'المرضى المنتظرون وداخل عند الطبيب')
 
 @section('content')
+@if(!$canManageQueue)
+<div class="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+    <i class="fas fa-eye ml-1"></i> وضع العرض فقط — لا يمكنك استدعاء المرضى أو إنهاء الزيارات.
+</div>
+@endif
+
 <div class="grid md:grid-cols-2 gap-6">
     <div class="bg-white rounded-xl border border-slate-200 p-6">
         <h2 class="font-bold text-amber-700 mb-4 flex items-center gap-2">
@@ -27,6 +33,9 @@
 
 @section('scripts')
 <script>
+const canManageQueue = @json($canManageQueue);
+const canViewRecords = @json($canViewRecords);
+
 function renderItem(b, actions) {
     return `
         <div class="border rounded-lg p-4 border-slate-200">
@@ -49,15 +58,15 @@ async function loadQueue() {
     const withDoc = items.filter(i => i.status === 'with_doctor');
 
     document.getElementById('waitingList').innerHTML = waiting.length
-        ? waiting.map(b => renderItem(b, `
+        ? waiting.map(b => renderItem(b, canManageQueue ? `
             <button onclick="toDoctor(${b.id})" class="text-xs px-2 py-1 bg-purple-600 text-white rounded">استدعاء</button>
-        `)).join('')
+        ` : '')).join('')
         : '<p class="text-slate-400 text-center py-4">لا يوجد مرضى منتظرين</p>';
 
     document.getElementById('withDoctorList').innerHTML = withDoc.length
         ? withDoc.map(b => renderItem(b, `
-            <a href="/doctor/dashboard/visits/${b.id}" class="text-xs px-2 py-1 bg-blue-600 text-white rounded text-center">بدء الكشف</a>
-            <button onclick="complete(${b.id})" class="text-xs px-2 py-1 bg-green-600 text-white rounded">إنهاء</button>
+            ${canViewRecords ? `<a href="/doctor/dashboard/visits/${b.id}" class="text-xs px-2 py-1 bg-blue-600 text-white rounded text-center">بدء الكشف</a>` : ''}
+            ${canManageQueue ? `<button onclick="complete(${b.id})" class="text-xs px-2 py-1 bg-green-600 text-white rounded">إنهاء</button>` : ''}
         `)).join('')
         : '<p class="text-slate-400 text-center py-4">لا يوجد مرضى حالياً</p>';
 }

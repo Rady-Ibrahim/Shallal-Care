@@ -23,7 +23,7 @@
                 <option value="">جميع الأنواع</option>
                 <option value="doctors">الأطباء</option>
                 <option value="patients">المرضى</option>
-                <option value="appointments">المواعيد</option>
+                <option value="bookings">الحجوزات</option>
             </select>
         </div>
         <div>
@@ -42,7 +42,7 @@
             <div>
                 <p class="text-sm text-gray-600">إجمالي المستخدمين</p>
                 <p class="text-2xl font-bold text-gray-800" id="totalUsers">0</p>
-                <p class="text-xs text-green-600 mt-1">+15% عن الفترة السابقة</p>
+                <p class="text-xs text-gray-500 mt-1"><span id="clinicPatientsCount">0</span> مريض عيادة</p>
             </div>
             <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-users text-blue-600"></i>
@@ -54,7 +54,7 @@
             <div>
                 <p class="text-sm text-gray-600">الأطباء النشطين</p>
                 <p class="text-2xl font-bold text-gray-800" id="activeDoctors">0</p>
-                <p class="text-xs text-green-600 mt-1">+10% عن الفترة السابقة</p>
+                <p class="text-xs text-gray-500 mt-1"><span id="clinicBranchesCount">0</span> فرع عيادة</p>
             </div>
             <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-user-md text-green-600"></i>
@@ -64,9 +64,9 @@
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-600">المواعيد اليومية</p>
-                <p class="text-2xl font-bold text-gray-800" id="dailyAppointments">0</p>
-                <p class="text-xs text-green-600 mt-1">+20% عن الفترة السابقة</p>
+                <p class="text-sm text-gray-600">حجوزات اليوم</p>
+                <p class="text-2xl font-bold text-gray-800" id="dailyBookings">0</p>
+                <p class="text-xs text-gray-500 mt-1">زيارات العيادات</p>
             </div>
             <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-calendar-check text-purple-600"></i>
@@ -76,9 +76,9 @@
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-600">معدل التحويل</p>
+                <p class="text-sm text-gray-600">معدل الحجز</p>
                 <p class="text-2xl font-bold text-gray-800" id="conversionRate">0%</p>
-                <p class="text-xs text-green-600 mt-1">+5% عن الفترة السابقة</p>
+                <p class="text-xs text-gray-500 mt-1">حجوزات / مرضى العيادات</p>
             </div>
             <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-percentage text-orange-600"></i>
@@ -99,8 +99,8 @@
 
     <!-- Appointments Chart -->
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">المواعيد حسب الحالة</h3>
-        <div class="h-64 flex items-center justify-center" id="appointmentsChart">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">الحجوزات حسب الحالة</h3>
+        <div class="h-64 flex items-center justify-center" id="bookingsChart">
             <p class="text-gray-500">سيتم عرض الرسم البياني هنا</p>
         </div>
     </div>
@@ -177,23 +177,49 @@ async function loadAnalyticsData() {
 }
 
 function renderAnalyticsData(data) {
-    // Stats Cards
     document.getElementById('totalUsers').textContent = data.total_users || 0;
+    document.getElementById('clinicPatientsCount').textContent = data.clinic_patients || 0;
     document.getElementById('activeDoctors').textContent = data.active_doctors || 0;
-    document.getElementById('dailyAppointments').textContent = data.daily_appointments || 0;
+    document.getElementById('clinicBranchesCount').textContent = data.clinic_branches || 0;
+    document.getElementById('dailyBookings').textContent = data.daily_bookings || data.daily_appointments || 0;
     document.getElementById('conversionRate').textContent = (data.conversion_rate || 0) + '%';
 
-    // Top Specialities
     renderTopSpecialities(data.top_specialities || []);
-
-    // Demographics
     renderDemographics(data.demographics || {});
-
-    // Peak Hours
     renderPeakHours(data.peak_hours || []);
-
-    // Geographic Distribution
     renderGeographicDistribution(data.geographic_distribution || []);
+    renderTimeSeriesChart('userGrowthChart', data.users || [], 'count', 'مستخدم جديد');
+    renderTimeSeriesChart('bookingsChart', data.bookings || [], 'count', 'حجز');
+}
+
+function renderTimeSeriesChart(containerId, series, valueKey, unitLabel) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const items = Array.isArray(series) ? series : [];
+    if (!items.length) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">لا توجد بيانات للفترة المحددة</p>';
+        return;
+    }
+
+    const max = Math.max(...items.map(item => Number(item[valueKey] || item.total || 0)), 1);
+    const showLabels = items.length <= 14;
+
+    container.innerHTML = `
+        <div class="w-full h-full flex items-end gap-1 px-2 pb-2">
+            ${items.map(item => {
+                const value = Number(item[valueKey] || item.total || 0);
+                const height = Math.max(4, Math.round((value / max) * 100));
+                const label = item.date ? new Date(item.date).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' }) : '';
+                return `
+                    <div class="flex-1 min-w-0 flex flex-col items-center justify-end h-full group" title="${label}: ${value} ${unitLabel}">
+                        <div class="w-full max-w-[28px] rounded-t bg-gradient-to-t from-indigo-600 to-blue-400 group-hover:from-indigo-700" style="height: ${height}%"></div>
+                        ${showLabels ? `<span class="text-[10px] text-gray-500 mt-1 truncate w-full text-center">${label}</span>` : ''}
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
 }
 
 function renderTopSpecialities(specialities) {
@@ -228,6 +254,9 @@ function renderDemographics(demographics) {
         return;
     }
 
+    const values = Object.values(demographics).map(v => Number(v) || 0);
+    const max = Math.max(...values, 1);
+
     container.innerHTML = Object.entries(demographics).map(([key, value]) => `
         <div>
             <div class="flex items-center justify-between mb-2">
@@ -235,7 +264,7 @@ function renderDemographics(demographics) {
                 <span class="text-sm font-semibold text-gray-800">${value || 0}</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-blue-600 h-2 rounded-full" style="width: ${(value / 100) * 100}%"></div>
+                <div class="bg-blue-600 h-2 rounded-full" style="width: ${Math.round(((Number(value) || 0) / max) * 100)}%"></div>
             </div>
         </div>
     `).join('');
@@ -253,7 +282,7 @@ function renderPeakHours(hours) {
         <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
             <div class="flex-1">
                 <p class="font-semibold text-gray-800">${hour.time_range}</p>
-                <p class="text-sm text-gray-600">${hour.count || 0} موعد</p>
+                <p class="text-sm text-gray-600">${hour.count || 0} حجز</p>
             </div>
             <div class="text-left">
                 <p class="font-semibold text-gray-800">${hour.percentage || 0}%</p>

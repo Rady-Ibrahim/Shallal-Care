@@ -15,7 +15,17 @@ class DoctorDashboardWebController extends Controller
 
     public function dashboard(): View
     {
-        return view('doctor.dashboard', ['doctor' => $this->context()->doctor]);
+        $ctx = $this->context();
+
+        return view('doctor.dashboard', [
+            'doctor' => $ctx->doctor,
+            'canViewPatients' => $ctx->hasPermission('patients.view'),
+            'canViewPrescriptions' => $ctx->hasPermission('prescriptions.view'),
+            'canViewReception' => $ctx->hasPermission('reception.view'),
+            'canViewQueue' => $ctx->hasPermission('queue.view'),
+            'canViewRecords' => $ctx->hasPermission('records.view'),
+            'canViewFinance' => $ctx->hasPermission('finance.view'),
+        ]);
     }
 
     public function calendar(): View
@@ -96,6 +106,16 @@ class DoctorDashboardWebController extends Controller
         return view('doctor.subscription.plans', ['doctor' => $this->context()->doctor]);
     }
 
+    public function subscriptionSuspended(): View
+    {
+        $ctx = $this->context();
+
+        return view('doctor.subscription.suspended', [
+            'doctorName' => $ctx->doctor->user?->name ?? 'الطبيب',
+            'branchName' => $ctx->branch?->branch_name,
+        ]);
+    }
+
     public function requests(): View
     {
         return view('doctor.requests.index');
@@ -103,12 +123,23 @@ class DoctorDashboardWebController extends Controller
 
     public function reception(): View
     {
-        return view('doctor.reception.index');
+        $ctx = $this->context();
+
+        return view('doctor.reception.index', [
+            'canManageReception' => $ctx->hasPermission('reception.manage'),
+            'canCollectCash' => $ctx->hasAnyPermission(['reception.manage', 'finance.collect']),
+            'canViewRecords' => $ctx->hasPermission('records.view'),
+        ]);
     }
 
     public function queue(): View
     {
-        return view('doctor.queue.index');
+        $ctx = $this->context();
+
+        return view('doctor.queue.index', [
+            'canManageQueue' => $ctx->hasAnyPermission(['reception.manage', 'queue.manage']),
+            'canViewRecords' => $ctx->hasPermission('records.view'),
+        ]);
     }
 
     public function finance(): View
@@ -151,8 +182,13 @@ class DoctorDashboardWebController extends Controller
 
     public function clinicDay(): View
     {
+        $ctx = $this->context();
+
         return view('doctor.today.index', [
             'currencySymbol' => config('clinic.currency_symbol', 'ج.م'),
+            'canManageReception' => $ctx->hasPermission('reception.manage'),
+            'canViewFinance' => $ctx->hasPermission('finance.view'),
+            'canViewRecords' => $ctx->hasPermission('records.view'),
         ]);
     }
 
@@ -163,12 +199,14 @@ class DoctorDashboardWebController extends Controller
         ]);
     }
 
-    public function financePrint(): View
+    public function financePrint(\Illuminate\Http\Request $request): View
     {
+        $date = $request->query('date', today()->format('Y-m-d'));
+
         return view('doctor.finance.print', [
             'currencySymbol' => config('clinic.currency_symbol', 'ج.م'),
             'branchName' => $this->context()->branch?->branch_name ?? '',
-            'date' => today()->format('Y-m-d'),
+            'date' => $date,
         ]);
     }
 }

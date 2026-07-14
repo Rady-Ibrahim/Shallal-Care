@@ -24,6 +24,13 @@
         .sidebar-link:hover:not(.active) {
             background-color: #f3f4f6;
         }
+        .nav-section-title {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: #9ca3af;
+            padding: 0.75rem 1rem 0.25rem;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -49,50 +56,65 @@
                     ? 'sidebar-link active flex items-center gap-3 px-4 py-3 rounded-lg transition'
                     : 'sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg transition text-gray-700';
             @endphp
-            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-                <a href="/admin/dashboard" class="{{ $navClass(request()->routeIs('admin.dashboard')) }}">
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <p class="nav-section-title">نظرة عامة</p>
+                <a href="{{ route('admin.dashboard') }}" class="{{ $navClass(request()->routeIs('admin.dashboard')) }}">
                     <i class="fas fa-home w-5"></i>
                     <span>الرئيسية</span>
                 </a>
-                <a href="/admin/dashboard/doctors" class="{{ $navClass(request()->routeIs('admin.doctors.*')) }}">
-                    <i class="fas fa-user-md w-5"></i>
-                    <span>الأطباء</span>
-                </a>
-                <a href="/admin/dashboard/patients" class="{{ $navClass(request()->routeIs('admin.patients.*')) }}">
-                    <i class="fas fa-users w-5"></i>
-                    <span>المرضى</span>
-                </a>
-                <a href="/admin/dashboard/appointments" class="{{ $navClass(request()->routeIs('admin.appointments.*')) }}">
-                    <i class="fas fa-calendar-check w-5"></i>
-                    <span>المواعيد</span>
-                </a>
-                <a href="/admin/dashboard/revenue" class="{{ $navClass(request()->routeIs('admin.revenue')) }}">
-                    <i class="fas fa-chart-line w-5"></i>
-                    <span>الإيرادات</span>
-                </a>
-                <a href="/admin/dashboard/subscriptions" class="{{ $navClass(request()->routeIs('admin.subscriptions*')) }}">
-                    <i class="fas fa-crown w-5"></i>
-                    <span>الاشتراكات</span>
-                </a>
-                <a href="/admin/dashboard/reviews" class="{{ $navClass(request()->routeIs('admin.reviews.*')) }}">
-                    <i class="fas fa-star w-5"></i>
-                    <span>التقييمات</span>
-                </a>
-                <a href="/admin/dashboard/analytics" class="{{ $navClass(request()->routeIs('admin.analytics')) }}">
+                <a href="{{ route('admin.analytics') }}" class="{{ $navClass(request()->routeIs('admin.analytics')) }}">
                     <i class="fas fa-chart-pie w-5"></i>
                     <span>التحليلات</span>
                 </a>
-                <a href="/admin/dashboard/specialities" class="{{ $navClass(request()->routeIs('admin.specialities.*')) }}">
+
+                <p class="nav-section-title">العيادات</p>
+                <a href="{{ route('admin.doctors.index') }}" class="{{ $navClass(request()->routeIs('admin.doctors.*')) }}">
+                    <i class="fas fa-user-md w-5"></i>
+                    <span>الأطباء</span>
+                </a>
+                <a href="{{ route('admin.clinic-patients.index') }}" class="{{ $navClass(request()->routeIs('admin.clinic-patients.*')) }}">
+                    <i class="fas fa-folder-open w-5"></i>
+                    <span>ملفات مرضى العيادات</span>
+                </a>
+                <a href="{{ route('admin.clinic-bookings.index') }}" class="{{ $navClass(request()->routeIs('admin.clinic-bookings.*') || request()->routeIs('admin.appointments.*')) }}">
+                    <i class="fas fa-calendar-check w-5"></i>
+                    <span>حجوزات العيادات</span>
+                </a>
+
+                <p class="nav-section-title">الحسابات</p>
+                <a href="{{ route('admin.patients.index') }}" class="{{ $navClass(request()->routeIs('admin.patients.*')) }}">
+                    <i class="fas fa-users w-5"></i>
+                    <span>حسابات المرضى</span>
+                </a>
+
+                <p class="nav-section-title">المالية</p>
+                <a href="{{ route('admin.revenue') }}" class="{{ $navClass(request()->routeIs('admin.revenue')) }}">
+                    <i class="fas fa-chart-line w-5"></i>
+                    <span>الإيرادات</span>
+                </a>
+                <a href="{{ route('admin.subscriptions.index') }}" class="{{ $navClass(request()->routeIs('admin.subscriptions*')) }}">
+                    <i class="fas fa-crown w-5"></i>
+                    <span>الاشتراكات</span>
+                </a>
+
+                <p class="nav-section-title">الكتالوج</p>
+                <a href="{{ route('admin.specialities.index') }}" class="{{ $navClass(request()->routeIs('admin.specialities.*')) }}">
                     <i class="fas fa-stethoscope w-5"></i>
                     <span>التخصصات</span>
                 </a>
-                <a href="/admin/dashboard/governorates" class="{{ $navClass(request()->routeIs('admin.governorates.*')) }}">
+                <a href="{{ route('admin.governorates.index') }}" class="{{ $navClass(request()->routeIs('admin.governorates.*')) }}">
                     <i class="fas fa-map-marker-alt w-5"></i>
                     <span>المحافظات</span>
                 </a>
-                <a href="/admin/users" class="{{ $navClass(request()->routeIs('admin.users.*')) }}">
+
+                <p class="nav-section-title">النظام</p>
+                <a href="{{ route('admin.users.index') }}" class="{{ $navClass(request()->routeIs('admin.users.*')) }}">
                     <i class="fas fa-user-cog w-5"></i>
-                    <span>إدارة المستخدمين</span>
+                    <span>مسؤولو المنصة</span>
+                </a>
+                <a href="{{ route('admin.reviews.index') }}" class="{{ $navClass(request()->routeIs('admin.reviews.*')) }}">
+                    <i class="fas fa-star w-5"></i>
+                    <span>التقييمات</span>
                 </a>
             </nav>
 

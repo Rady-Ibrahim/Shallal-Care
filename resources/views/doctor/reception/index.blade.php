@@ -5,6 +5,12 @@
 @section('page-description', 'حجز المرضى وتسجيل الحضور — ابحث برقم الحجز أو اسم المريض')
 
 @section('content')
+@if(!$canManageReception)
+<div class="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+    <i class="fas fa-eye ml-1"></i> وضع العرض فقط — لا يمكنك إجراء حجوزات أو تعديل الحالات.
+</div>
+@endif
+
 <div id="pageAlert" class="hidden mb-6 p-4 rounded-xl border text-sm font-semibold" role="alert"></div>
 
 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" id="statsCards">
@@ -26,9 +32,11 @@
         </div>
         <div class="flex gap-2">
             <button type="button" id="toggleAdvanced" class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm">بحث متقدم</button>
+            @if($canManageReception)
             <button type="button" id="openBookingModal" class="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                 + حجز جديد
             </button>
+            @endif
         </div>
     </div>
 
@@ -38,7 +46,7 @@
     </div>
 
     <div class="flex flex-wrap gap-2 mb-4">
-        @foreach(['all'=>'الكل','scheduled'=>'محجوز','waiting'=>'في الدور','with_doctor'=>'عند الطبيب','completed'=>'تم'] as $val => $lbl)
+        @foreach(['all'=>'الكل','scheduled'=>'محجوز','checked_in'=>'حضر','waiting'=>'في الانتظار','with_doctor'=>'عند الطبيب','pending_payment'=>'بانتظار الدفع','completed'=>'تم'] as $val => $lbl)
         <button type="button" data-status="{{ $val }}" class="status-filter px-3 py-1.5 rounded-full text-sm border border-slate-200 hover:bg-blue-50">{{ $lbl }}</button>
         @endforeach
     </div>
@@ -53,6 +61,10 @@
         <h3 class="text-lg font-bold text-slate-800 mb-1">حجز مريض جديد</h3>
         <p class="text-sm text-slate-500 mb-4">سيُنشأ رقم حجز تلقائياً بعد الحفظ</p>
         <form id="bookingForm" class="space-y-3">
+            <div>
+                <label class="block text-sm font-semibold mb-1">تاريخ الزيارة</label>
+                <input name="visit_date" id="bookingVisitDate" type="date" value="{{ today()->format('Y-m-d') }}" class="w-full border rounded-lg px-3 py-2">
+            </div>
             <div>
                 <label class="block text-sm font-semibold mb-1">رقم الهاتف *</label>
                 <input name="phone" id="bookingPhone" required class="w-full border rounded-lg px-3 py-2" placeholder="01xxxxxxxxx">
@@ -96,6 +108,9 @@
 let currentStatus = 'all';
 let searchTimer = null;
 let pageAlertTimer = null;
+const canManageReception = @json($canManageReception);
+const canCollectCash = @json($canCollectCash);
+const canViewRecords = @json($canViewRecords);
 
 function showPageAlert(message, type = 'success') {
     const alert = document.getElementById('pageAlert');
@@ -167,11 +182,13 @@ async function loadBookings() {
                         <p class="text-sm text-slate-500">${b.consultation_fee} ${'{{ config('clinic.currency_symbol') }}'} — دفع: ${b.payment_status === 'paid' ? 'مدفوع' : 'معلق'}</p>
                     </div>
                     <div class="flex flex-wrap gap-2 items-center">
-                        ${b.status === 'scheduled' ? `<button onclick="checkIn(${b.id})" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm">تسجيل حضور</button>` : ''}
-                        ${b.payment_status !== 'paid' && b.status !== 'cancelled' ? `<button onclick="collect(${b.id})" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm">تحصيل كاش</button>` : ''}
-                        ${b.status === 'with_doctor' ? `<a href="/doctor/dashboard/visits/${b.id}" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm">متابعة الكشف</a>` : ''}
-                        ${b.status === 'waiting' ? `<button onclick="setStatus(${b.id}, 'with_doctor')" class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm">دخل للطبيب</button>` : ''}
-                        ${b.status === 'with_doctor' ? `<button onclick="setStatus(${b.id}, 'completed')" class="px-3 py-1.5 bg-slate-700 text-white rounded-lg text-sm">إنهاء</button>` : ''}
+                        ${canManageReception && b.status === 'scheduled' ? `<button onclick="checkIn(${b.id})" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm">تسجيل حضور</button>` : ''}
+                        ${canManageReception && ['scheduled','waiting','checked_in'].includes(b.status) ? `<button onclick="setStatus(${b.id}, 'cancelled')" class="px-3 py-1.5 bg-slate-500 text-white rounded-lg text-sm">إلغاء</button>` : ''}
+                        ${canManageReception && b.status === 'scheduled' ? `<button onclick="setStatus(${b.id}, 'no_show')" class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm">لم يحضر</button>` : ''}
+                        ${canCollectCash && b.payment_status !== 'paid' && b.status !== 'cancelled' ? `<button onclick="collect(${b.id})" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm">تحصيل كاش</button>` : ''}
+                        ${canViewRecords && b.status === 'with_doctor' ? `<a href="/doctor/dashboard/visits/${b.id}" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm">متابعة الكشف</a>` : ''}
+                        ${canManageReception && b.status === 'waiting' ? `<button onclick="setStatus(${b.id}, 'with_doctor')" class="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm">دخل للطبيب</button>` : ''}
+                        ${canManageReception && b.status === 'with_doctor' ? `<button onclick="setStatus(${b.id}, 'completed')" class="px-3 py-1.5 bg-slate-700 text-white rounded-lg text-sm">إنهاء</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -195,6 +212,8 @@ async function collect(id) {
 }
 
 async function setStatus(id, status) {
+    const labels = { cancelled: 'إلغاء الحجز', no_show: 'تسجيل عدم الحضور', with_doctor: 'دخول للطبيب', completed: 'إنهاء الزيارة' };
+    if (!await confirmAction(labels[status] || 'تغيير الحالة؟')) return;
     await apiCall(`/doctor/api/reception/bookings/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
@@ -258,8 +277,9 @@ document.getElementById('bookingPhone')?.addEventListener('input', (e) => {
     lookupTimer = setTimeout(() => lookupPatientByPhone(e.target.value.trim()), 400);
 });
 
-document.getElementById('openBookingModal').addEventListener('click', () => {
+document.getElementById('openBookingModal')?.addEventListener('click', () => {
     document.getElementById('bookingForm').reset();
+    document.getElementById('bookingVisitDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('patientLookupCard')?.classList.add('hidden');
     document.getElementById('bookingModal').classList.remove('hidden');
 });
@@ -268,7 +288,7 @@ document.getElementById('closeBookingModal').addEventListener('click', () => {
     document.getElementById('bookingModal').classList.add('hidden');
 });
 
-document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+document.getElementById('bookingForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
     const payload = Object.fromEntries(form.entries());

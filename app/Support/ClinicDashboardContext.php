@@ -85,6 +85,17 @@ class ClinicDashboardContext
         return $this->staffMember?->hasPermission($permission) ?? false;
     }
 
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function doctorId(): int
     {
         return (int) $this->doctor->id;

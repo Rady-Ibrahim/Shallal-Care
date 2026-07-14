@@ -92,19 +92,39 @@ class AdminDashboardApiController extends Controller
     public function patientDetails($id): JsonResponse
     {
         try {
-            $patient = \Modules\Auth\Models\User::where('role', 'patient')->findOrFail($id);
-            return $this->success($patient);
+            return $this->success($this->adminDashboardService->getPatientDetails((int) $id));
         } catch (\Exception $e) {
             return $this->notFound('المريض غير موجود');
         }
     }
 
-    public function appointments(Request $request): JsonResponse
+    public function clinicPatients(Request $request): JsonResponse
     {
         try {
-            $paginator = $this->adminDashboardService->getAppointmentsStats($request->all());
+            $paginator = $this->adminDashboardService->getClinicPatientsStats($request->all());
 
-            if ($request->has('limit') && !$request->has('page')) {
+            return $this->paginated(
+                $paginator->items(),
+                $paginator->total(),
+                $paginator->currentPage(),
+                $paginator->perPage()
+            );
+        } catch (\Exception $e) {
+            return $this->serverError('حدث خطأ أثناء جلب ملفات مرضى العيادات');
+        }
+    }
+
+    public function appointments(Request $request): JsonResponse
+    {
+        return $this->clinicBookings($request);
+    }
+
+    public function clinicBookings(Request $request): JsonResponse
+    {
+        try {
+            $paginator = $this->adminDashboardService->getClinicBookingsStats($request->all());
+
+            if ($request->has('limit') && ! $request->has('page')) {
                 return $this->success($paginator->items());
             }
 
@@ -115,7 +135,7 @@ class AdminDashboardApiController extends Controller
                 $paginator->perPage()
             );
         } catch (\Exception $e) {
-            return $this->serverError('حدث خطأ أثناء جلب المواعيد');
+            return $this->serverError('حدث خطأ أثناء جلب الحجوزات');
         }
     }
 
@@ -524,6 +544,9 @@ class AdminDashboardApiController extends Controller
             'status' => $doctor->status,
             'rating' => $doctor->rating,
             'experience_years' => $doctor->experience_years,
+            'branches_count' => $doctor->branches_count ?? 0,
+            'visits_count' => $doctor->visits_count ?? 0,
+            'bookings_today' => $doctor->bookings_today ?? 0,
             'created_at' => $doctor->created_at,
         ];
     }

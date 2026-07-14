@@ -88,7 +88,7 @@ function renderHeader(booking) {
         <p class="text-slate-500">${booking.patient_phone || ''} · ملف ${booking.file_number || '—'}</p>
       </div>
       <div class="text-left">
-        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">${booking.status}</span>
+        <span class="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">${booking.status_label || booking.status}</span>
         <p class="text-sm text-slate-500 mt-2">${booking.visit_date}</p>
       </div>
     </div>

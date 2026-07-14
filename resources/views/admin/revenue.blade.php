@@ -44,7 +44,7 @@
             <div>
                 <p class="text-sm text-gray-600">إجمالي الإيرادات</p>
                 <p class="text-2xl font-bold text-gray-800" id="totalRevenue">0</p>
-                <p class="text-xs text-green-600 mt-1">+12% عن الفترة السابقة</p>
+                <p class="text-xs text-gray-500 mt-1" id="clinicNetHint">-</p>
             </div>
             <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-dollar-sign text-blue-600"></i>
@@ -54,9 +54,9 @@
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-600">المواعيد المكتملة</p>
-                <p class="text-2xl font-bold text-gray-800" id="completedAppointments">0</p>
-                <p class="text-xs text-green-600 mt-1">+8% عن الفترة السابقة</p>
+                <p class="text-sm text-gray-600">زيارات مكتملة</p>
+                <p class="text-2xl font-bold text-gray-800" id="completedVisits">0</p>
+                <p class="text-xs text-gray-500 mt-1">من حجوزات العيادات</p>
             </div>
             <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                 <i class="fas fa-check-circle text-green-600"></i>
@@ -66,24 +66,24 @@
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-600">اشتراكات الأطباء</p>
-                <p class="text-2xl font-bold text-gray-800" id="subscriptionRevenue">0</p>
-                <p class="text-xs text-green-600 mt-1">+5% عن الفترة السابقة</p>
+                <p class="text-sm text-gray-600">إيراد العيادات</p>
+                <p class="text-2xl font-bold text-gray-800" id="clinicIncome">0</p>
+                <p class="text-xs text-gray-500 mt-1" id="clinicExpenseHint">-</p>
             </div>
-            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <i class="fas fa-crown text-purple-600"></i>
+            <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-clinic-medical text-teal-600"></i>
             </div>
         </div>
     </div>
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-600">متوسط الإيراد</p>
-                <p class="text-2xl font-bold text-gray-800" id="averageRevenue">0</p>
-                <p class="text-xs text-green-600 mt-1">+3% عن الفترة السابقة</p>
+                <p class="text-sm text-gray-600">اشتراكات الأطباء</p>
+                <p class="text-2xl font-bold text-gray-800" id="subscriptionRevenue">0</p>
+                <p class="text-xs text-gray-500 mt-1">متوسط: <span id="averageRevenue">0</span></p>
             </div>
-            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <i class="fas fa-chart-line text-orange-600"></i>
+            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-crown text-purple-600"></i>
             </div>
         </div>
     </div>
@@ -157,11 +157,9 @@ async function loadRevenueData() {
         const dateFrom = document.getElementById('dateFrom').value;
         const dateTo = document.getElementById('dateTo').value;
         
-        const params = new URLSearchParams({
-            period,
-            date_from: dateFrom,
-            date_to: dateTo,
-        });
+        const params = new URLSearchParams({ period });
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
 
         const data = await apiCall(`/admin/api/revenue?${params}`);
         
@@ -179,20 +177,45 @@ async function loadRevenueData() {
 }
 
 function renderRevenueData(data) {
-    // Cards
     document.getElementById('totalRevenue').textContent = formatCurrency(data.total_revenue || 0);
-    document.getElementById('completedAppointments').textContent = data.completed_appointments || 0;
+    document.getElementById('clinicNetHint').textContent = `صافي العيادات: ${formatCurrency(data.clinic_net || 0)}`;
+    document.getElementById('completedVisits').textContent = data.completed_visits || data.completed_appointments || 0;
+    document.getElementById('clinicIncome').textContent = formatCurrency(data.clinic_income || 0);
+    document.getElementById('clinicExpenseHint').textContent = `مصروفات: ${formatCurrency(data.clinic_expense || 0)}`;
     document.getElementById('subscriptionRevenue').textContent = formatCurrency(data.subscription_revenue || 0);
     document.getElementById('averageRevenue').textContent = formatCurrency(data.average_revenue || 0);
 
-    // Revenue by Category
     renderRevenueByCategory(data.revenue_by_category || []);
-
-    // Top Performers
     renderTopPerformers(data.top_performers || []);
-
-    // Recent Transactions
     renderTransactions(data.recent_transactions || []);
+    renderRevenueChart(data.daily_revenue || []);
+}
+
+function renderRevenueChart(days) {
+    const container = document.getElementById('revenueChart');
+
+    if (!days.length) {
+        container.innerHTML = '<p class="text-gray-500">لا توجد بيانات في هذه الفترة</p>';
+        return;
+    }
+
+    const max = Math.max(...days.map(d => d.total || 0), 1);
+    const showLabels = days.length <= 14;
+
+    container.innerHTML = `
+        <div class="w-full h-full flex items-end gap-1 px-2 pb-2">
+            ${days.map(day => {
+                const height = Math.max(4, Math.round(((day.total || 0) / max) * 100));
+                const label = new Date(day.date).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+                return `
+                    <div class="flex-1 min-w-0 flex flex-col items-center justify-end h-full group" title="${label}: ${formatCurrency(day.total || 0)}">
+                        <div class="w-full max-w-[28px] rounded-t bg-gradient-to-t from-blue-600 to-indigo-400 transition-all group-hover:from-blue-700" style="height: ${height}%"></div>
+                        ${showLabels ? `<span class="text-[10px] text-gray-500 mt-1 truncate w-full text-center">${label}</span>` : ''}
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
 }
 
 function renderRevenueByCategory(categories) {
@@ -231,7 +254,7 @@ function renderTopPerformers(performers) {
             </div>
             <div class="flex-1">
                 <p class="font-semibold text-gray-800">${performer.name || 'غير محدد'}</p>
-                <p class="text-sm text-gray-600">${performer.appointments || 0} موعد</p>
+                <p class="text-sm text-gray-600">${performer.visits || performer.appointments || 0} زيارة</p>
             </div>
             <div class="text-left">
                 <p class="font-semibold text-gray-800">${formatCurrency(performer.revenue)}</p>
@@ -276,35 +299,33 @@ function applyFilters() {
 
 function getTransactionTypeClass(type) {
     const classes = {
-        'appointment': 'bg-blue-100 text-blue-800',
-        'subscription': 'bg-purple-100 text-purple-800',
-        'refund': 'bg-red-100 text-red-800',
-        'commission': 'bg-orange-100 text-orange-800',
+        clinic_income: 'bg-teal-100 text-teal-800',
+        appointment: 'bg-blue-100 text-blue-800',
+        subscription: 'bg-purple-100 text-purple-800',
+        refund: 'bg-red-100 text-red-800',
+        commission: 'bg-orange-100 text-orange-800',
     };
     return classes[type] || 'bg-gray-100 text-gray-800';
 }
 
 function getTransactionTypeText(type) {
     const texts = {
-        'appointment': 'موعد',
-        'subscription': 'اشتراك',
-        'refund': 'استرداد',
-        'commission': 'عمولة',
+        clinic_income: 'إيراد عيادة',
+        appointment: 'زيارة',
+        subscription: 'اشتراك',
+        refund: 'استرداد',
+        commission: 'عمولة',
     };
     return texts[type] || type;
 }
 
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('ar-IQ', {
-        style: 'currency',
-        currency: 'IQD',
-        minimumFractionDigits: 0
-    }).format(amount);
+    return new Intl.NumberFormat('ar-EG', { style: 'decimal', minimumFractionDigits: 0 }).format(amount || 0) + ' ج.م';
 }
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 </script>
 @endsection

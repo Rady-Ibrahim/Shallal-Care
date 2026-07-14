@@ -117,16 +117,24 @@
             <h3 class="text-lg font-semibold text-gray-800 mb-4">الإحصائيات</h3>
             <div class="space-y-4">
                 <div>
-                    <p class="text-sm text-gray-600">إجمالي المواعيد</p>
-                    <p class="text-2xl font-bold text-gray-800" id="totalAppointments">0</p>
+                    <p class="text-sm text-gray-600">إجمالي الزيارات</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalVisits">0</p>
                 </div>
                 <div>
-                    <p class="text-sm text-gray-600">المواعيد المكتملة</p>
-                    <p class="text-2xl font-bold text-gray-800" id="completedAppointments">0</p>
+                    <p class="text-sm text-gray-600">زيارات مكتملة</p>
+                    <p class="text-2xl font-bold text-gray-800" id="completedVisits">0</p>
                 </div>
                 <div>
-                    <p class="text-sm text-gray-600">إجمالي المرضى</p>
+                    <p class="text-sm text-gray-600">مرضى العيادة</p>
                     <p class="text-2xl font-bold text-gray-800" id="totalPatients">0</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">السكرتارية / الفريق</p>
+                    <p class="text-2xl font-bold text-gray-800" id="staffCount">0</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">إيراد العيادات</p>
+                    <p class="text-2xl font-bold text-gray-800" id="clinicRevenue">0</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-600">عدد التقييمات</p>
@@ -180,7 +188,7 @@ function renderDoctorDetails(doctor) {
     document.getElementById('doctorSpeciality').textContent = doctor.speciality || 'غير محدد';
     document.getElementById('doctorRating').textContent = doctor.rating || '0.0';
     document.getElementById('doctorExperience').textContent = (doctor.experience_years || 0) + ' سنة';
-    document.getElementById('doctorFee').textContent = (doctor.consultation_fee || 0) + ' د.ع';
+    document.getElementById('doctorFee').textContent = formatCurrency(doctor.consultation_fee || 0);
     document.getElementById('doctorBio').textContent = doctor.bio || '-';
 
     const docs = document.getElementById('doctorDocuments');
@@ -232,9 +240,11 @@ function renderDoctorDetails(doctor) {
     actionButtons.innerHTML = buttons;
 
     // Statistics
-    document.getElementById('totalAppointments').textContent = doctor.total_appointments || 0;
-    document.getElementById('completedAppointments').textContent = doctor.completed_appointments || 0;
+    document.getElementById('totalVisits').textContent = doctor.total_visits || doctor.total_appointments || 0;
+    document.getElementById('completedVisits').textContent = doctor.completed_visits || doctor.completed_appointments || 0;
     document.getElementById('totalPatients').textContent = doctor.total_patients || 0;
+    document.getElementById('staffCount').textContent = doctor.staff_count || 0;
+    document.getElementById('clinicRevenue').textContent = formatCurrency(doctor.clinic_revenue || 0);
     document.getElementById('totalReviews').textContent = doctor.total_reviews || 0;
 
     // Branches
@@ -390,6 +400,10 @@ function getStatusText(status) {
         'rejected': 'مرفوض',
     };
     return texts[status] || status;
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('ar-EG', { style: 'decimal', minimumFractionDigits: 0 }).format(amount || 0) + ' ج.م';
 }
 </script>
 @endsection

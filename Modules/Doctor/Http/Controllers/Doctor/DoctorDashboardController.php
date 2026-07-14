@@ -199,7 +199,12 @@ class DoctorDashboardController extends Controller
     {
         try {
             $doctor = $this->resolveDoctor();
-            return $this->success($this->doctorDashboardService->getSchedules($doctor->id));
+            $ctx = $this->clinicContext();
+
+            return $this->success($this->doctorDashboardService->getSchedules(
+                $doctor->id,
+                $ctx->branchId()
+            ));
         } catch (\Exception $e) {
             return $this->serverError('حدث خطأ أثناء جلب الجداول');
         }
@@ -452,6 +457,7 @@ class DoctorDashboardController extends Controller
     {
         $request->validate([
             'patient_id' => 'required|integer|exists:users,id',
+            'clinic_booking_id' => 'nullable|integer|exists:clinic_bookings,id',
             'diagnosis' => 'nullable|string',
             'medicines' => 'required|array|min:1',
             'medicines.*.name' => 'required|string',
@@ -463,10 +469,14 @@ class DoctorDashboardController extends Controller
 
         try {
             $doctor = $this->resolveDoctor();
+            $ctx = $this->clinicContext();
+            $payload = $request->all();
+            $payload['branch_id'] = $ctx->branchId();
+
             $record = $this->doctorDashboardService->createPrescription(
                 $doctor->id,
                 auth('web')->id(),
-                $request->all()
+                $payload
             );
 
             return $this->created($this->doctorDashboardService->getPrescription($doctor->id, $record->id), 'تم إنشاء الوصفة بنجاح');
@@ -516,8 +526,8 @@ class DoctorDashboardController extends Controller
     public function storeRecord(Request $request): JsonResponse
     {
         $request->validate([
-            'patient_id' => 'required_without:appointment_id|integer|exists:users,id',
-            'appointment_id' => 'nullable|integer|exists:appointments,id',
+            'patient_id' => 'required_without:clinic_booking_id|integer|exists:users,id',
+            'clinic_booking_id' => 'nullable|integer|exists:clinic_bookings,id',
             'type' => 'required|string',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -528,10 +538,14 @@ class DoctorDashboardController extends Controller
 
         try {
             $doctor = $this->resolveDoctor();
+            $ctx = $this->clinicContext();
+            $payload = $request->only(['patient_id', 'clinic_booking_id', 'type', 'title', 'description', 'notes']);
+            $payload['branch_id'] = $ctx->branchId();
+
             $record = $this->doctorDashboardService->createRecord(
                 $doctor->id,
                 auth('web')->id(),
-                $request->only(['patient_id', 'appointment_id', 'type', 'title', 'description', 'notes']),
+                $payload,
                 $request->file('files', [])
             );
 

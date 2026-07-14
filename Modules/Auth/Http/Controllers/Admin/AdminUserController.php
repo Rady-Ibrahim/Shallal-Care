@@ -28,7 +28,7 @@ class AdminUserController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = User::query();
+            $query = User::with('doctor');
 
             if ($request->has('role')) {
                 $query->where('role', $request->role);

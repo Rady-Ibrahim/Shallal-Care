@@ -1,8 +1,8 @@
 @extends('admin.layout')
 
 @section('title', 'إدارة المستخدمين')
-@section('page-title', 'المستخدمين')
-@section('page-description', 'إدارة جميع مستخدمي النظام')
+@section('page-title', 'مسؤولو المنصة')
+@section('page-description', 'إدارة حسابات المسؤولين — للمرضى والأطباء استخدم الصفحات المخصصة')
 
 @section('content')
 <div class="flex justify-end mb-4">
@@ -58,6 +58,7 @@
                 <option value="">جميع الأدوار</option>
                 <option value="patient">مريض</option>
                 <option value="doctor">طبيب</option>
+                <option value="secretary">سكرتير</option>
                 <option value="admin">مسؤول</option>
             </select>
         </div>
@@ -194,9 +195,10 @@ function renderUsersTable(users) {
             <td class="px-6 py-4 text-gray-600 text-sm">${formatDate(user.created_at)}</td>
             <td class="px-6 py-4">
                 <div class="flex gap-2">
-                    <a href="/admin/users/${user.id}" class="px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition text-sm">
+                    ${getUserProfileUrl(user) ? `
+                    <a href="${getUserProfileUrl(user)}" class="px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition text-sm" title="عرض الملف">
                         <i class="fas fa-eye"></i>
-                    </a>
+                    </a>` : ''}
                     ${user.status === 'active' ? `
                         <button onclick="blockUser('${user.id}')" class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition text-sm">
                             <i class="fas fa-ban"></i>
@@ -313,10 +315,21 @@ async function deleteUser(userId) {
     }
 }
 
+function getUserProfileUrl(user) {
+    if (user.role === 'patient') {
+        return `/admin/dashboard/patients/${user.id}`;
+    }
+    if (user.role === 'doctor' && user.doctor?.id) {
+        return `/admin/dashboard/doctors/${user.doctor.id}`;
+    }
+    return null;
+}
+
 function getRoleClass(role) {
     const classes = {
         'patient': 'bg-green-100 text-green-800',
         'doctor': 'bg-blue-100 text-blue-800',
+        'secretary': 'bg-amber-100 text-amber-800',
         'admin': 'bg-purple-100 text-purple-800',
     };
     return classes[role] || 'bg-gray-100 text-gray-800';
@@ -326,6 +339,7 @@ function getRoleText(role) {
     const texts = {
         'patient': 'مريض',
         'doctor': 'طبيب',
+        'secretary': 'سكرتير',
         'admin': 'مسؤول',
     };
     return texts[role] || role;
@@ -333,7 +347,7 @@ function getRoleText(role) {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 
 function openAddAdminModal() {

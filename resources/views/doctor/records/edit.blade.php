@@ -316,7 +316,7 @@ function printRecord() {
 }
 
 function downloadPDF() {
-    alert('سيتم تحميل السجل بصيغة PDF');
+    window.open(`/doctor/dashboard/records/${recordId}?print=1`, '_blank');
 }
 
 async function deleteRecord() {
@@ -340,7 +340,7 @@ async function deleteRecord() {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 </script>
 @endsection

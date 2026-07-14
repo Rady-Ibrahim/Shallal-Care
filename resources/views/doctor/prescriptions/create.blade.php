@@ -130,6 +130,7 @@ async function loadPatients() {
             if (diagnosis) {
                 document.getElementById('diagnosis').value = decodeURIComponent(diagnosis);
             }
+            window.__bookingId = urlParams.get('booking_id');
         }
     } catch (error) {
         console.error('Error loading patients:', error);
@@ -246,6 +247,7 @@ async function createPrescription(event) {
             method: 'POST',
             body: JSON.stringify({
                 patient_id: document.getElementById('patientId').value,
+                clinic_booking_id: window.__bookingId ? parseInt(window.__bookingId, 10) : null,
                 diagnosis: document.getElementById('diagnosis').value,
                 medicines: medicines,
                 notes: document.getElementById('notes').value,
@@ -268,7 +270,7 @@ async function createPrescription(event) {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 </script>
 @endsection

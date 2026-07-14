@@ -42,6 +42,10 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                 Route::post('/resubmit-documents', [DoctorVerificationController::class, 'resubmit'])->name('resubmit');
 
                 Route::middleware(['doctor.approved', 'clinic.context'])->group(function () {
+                    Route::get('/subscription-suspended', [DoctorDashboardWebController::class, 'subscriptionSuspended'])
+                        ->name('subscription.suspended');
+
+                    Route::middleware('clinic.subscription')->group(function () {
                     Route::get('/dashboard', [DoctorDashboardWebController::class, 'dashboard'])->name('dashboard');
 
                     Route::middleware('clinic.permission:reception.view')->group(function () {
@@ -112,10 +116,6 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                         Route::get('/dashboard/records/{id}/edit', [DoctorDashboardWebController::class, 'recordEdit'])->name('records.edit');
                     });
 
-                    Route::middleware('clinic.permission:appointments.view')->group(function () {
-                        Route::get('/dashboard/requests', [DoctorDashboardWebController::class, 'requests'])->name('requests');
-                    });
-
                     Route::prefix('api')->group(function () {
                         Route::get('/me', [ClinicStaffController::class, 'me']);
 
@@ -128,7 +128,13 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                         Route::middleware('clinic.permission:reception.manage')->group(function () {
                             Route::post('/reception/bookings', [ReceptionController::class, 'store']);
                             Route::post('/reception/bookings/{id}/check-in', [ReceptionController::class, 'checkIn']);
+                        });
+
+                        Route::middleware('clinic.permission:reception.manage|finance.collect')->group(function () {
                             Route::post('/reception/bookings/{id}/collect', [ReceptionController::class, 'collectPayment']);
+                        });
+
+                        Route::middleware('clinic.permission:reception.manage|queue.manage')->group(function () {
                             Route::patch('/reception/bookings/{id}/status', [ReceptionController::class, 'updateStatus']);
                         });
 
@@ -185,9 +191,9 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                             Route::get('/waiting-screen', [ClinicDayController::class, 'waitingScreen']);
                         });
 
-                        Route::get('/metrics', [DoctorDashboardController::class, 'metrics']);
-                        Route::get('/today-activity', [DoctorDashboardController::class, 'todayActivity']);
-                        Route::get('/upcoming-tasks', [DoctorDashboardController::class, 'upcomingTasks']);
+                        Route::middleware('clinic.permission:reception.view|queue.view')->get('/metrics', [DoctorDashboardController::class, 'metrics']);
+                        Route::middleware('clinic.permission:reception.view')->get('/today-activity', [DoctorDashboardController::class, 'todayActivity']);
+                        Route::middleware('clinic.permission:queue.view')->get('/upcoming-tasks', [DoctorDashboardController::class, 'upcomingTasks']);
 
                         Route::middleware('clinic.permission:patients.view')->group(function () {
                             Route::get('/patients', [DoctorDashboardController::class, 'patients']);
@@ -226,20 +232,14 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
                         Route::put('/professional', [DoctorDashboardController::class, 'updateProfessional'])
                             ->middleware('clinic.owner');
 
-                        Route::get('/schedules', [DoctorDashboardController::class, 'schedules']);
+                        Route::get('/schedules', [DoctorDashboardController::class, 'schedules'])
+                            ->middleware('clinic.owner');
                         Route::post('/schedules', [DoctorDashboardController::class, 'storeSchedule'])
                             ->middleware('clinic.owner');
-                        Route::delete('/schedules/{scheduleId}', [DoctorDashboardController::class, 'deleteSchedule']);
+                        Route::delete('/schedules/{scheduleId}', [DoctorDashboardController::class, 'deleteSchedule'])
+                            ->middleware('clinic.owner');
 
                         Route::get('/calendar', [DoctorDashboardController::class, 'calendar']);
-                        Route::get('/appointments', [DoctorDashboardController::class, 'appointments']);
-                        Route::get('/appointments/{appointmentId}', [DoctorDashboardController::class, 'appointmentDetails']);
-                        Route::post('/appointments/{appointmentId}/confirm', [DoctorDashboardController::class, 'confirmAppointment'])
-                            ->middleware('clinic.permission:appointments.manage');
-                        Route::post('/appointments/{appointmentId}/reject', [DoctorDashboardController::class, 'rejectAppointment'])
-                            ->middleware('clinic.permission:appointments.manage');
-                        Route::post('/appointments/{appointmentId}/complete', [DoctorDashboardController::class, 'completeAppointment'])
-                            ->middleware('clinic.permission:appointments.manage');
 
                         Route::get('/notifications/unread', [DoctorDashboardController::class, 'unreadNotifications']);
                         Route::post('/notifications/{notificationId}/read', [DoctorDashboardController::class, 'markNotificationRead']);
@@ -267,6 +267,7 @@ Route::middleware(['session.scope:doctor', 'web'])->group(function () {
 
                         Route::post('/change-password', [DoctorDashboardController::class, 'changePassword'])
                             ->middleware('clinic.permission:settings.view');
+                    });
                     });
                 });
             });

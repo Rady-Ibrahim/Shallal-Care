@@ -191,11 +191,18 @@ class SubscriptionController extends Controller
                 return $this->notFound('الطبيب غير موجود');
             }
 
-            $canBook = $this->subscriptionService->checkDoctorSubscriptionLimit($doctor->id);
+            $limit = $this->subscriptionService->getClinicBookingLimitStatus($doctor->id);
 
             return $this->success([
-                'can_book' => $canBook,
-            ], $canBook ? 'يمكنك حجز المواعيد' : 'لقد وصلت للحد الأقصى من الحجوزات');
+                'can_book' => $limit['can_create_booking'],
+                'has_active_subscription' => $limit['has_active_subscription'],
+                'monthly_bookings_used' => $limit['monthly_bookings_used'],
+                'monthly_bookings_limit' => $limit['monthly_bookings_limit'],
+            ], $limit['can_create_booking']
+                ? 'يمكنك إنشاء حجوزات العيادة'
+                : ($limit['has_active_subscription']
+                    ? 'تم الوصول للحد الشهري لحجوزات العيادة'
+                    : 'لا يوجد اشتراك نشط'));
         } catch (\Exception $e) {
             return $this->serverError('حدث خطأ أثناء التحقق');
         }

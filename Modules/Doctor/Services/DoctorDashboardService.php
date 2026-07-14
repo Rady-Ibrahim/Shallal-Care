@@ -115,12 +115,10 @@ class DoctorDashboardService
 
         $query = User::where('role', 'patient')
             ->where(function ($q) use ($doctorId, $doctor) {
-                $q->whereHas('appointments', fn ($sub) => $sub->where('doctor_id', $doctorId))
-                    ->orWhere('created_by_doctor_id', $doctor->user_id)
-                    ->orWhereIn('id', ClinicPatient::where('doctor_id', $doctorId)->pluck('patient_id'));
+                $q->whereIn('id', ClinicPatient::where('doctor_id', $doctorId)->pluck('patient_id'))
+                    ->orWhere('created_by_doctor_id', $doctor->user_id);
             })
-            ->withCount(['appointments as total_appointments' => fn ($q) => $q->where('doctor_id', $doctorId)])
-            ->with(['appointments' => fn ($q) => $q->where('doctor_id', $doctorId)->orderByDesc('appointment_date')->limit(1)]);
+            ->withCount(['clinicBookings as total_visits' => fn ($q) => $q->where('doctor_id', $doctorId)]);
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
@@ -139,7 +137,6 @@ class DoctorDashboardService
         $paginator = $query->paginate($limit);
 
         $paginator->getCollection()->transform(function (User $patient) use ($doctorId) {
-            $lastAppointment = $patient->appointments->first();
             $clinicPatient = ClinicPatient::where('doctor_id', $doctorId)
                 ->where('patient_id', $patient->id)
                 ->first();
@@ -156,13 +153,8 @@ class DoctorDashboardService
                 'email' => $patient->email,
                 'is_ghost' => (bool) $patient->is_ghost,
                 'file_number' => $clinicPatient?->file_number,
-                'total_appointments' => $patient->total_appointments,
-                'total_visits' => ClinicBooking::where('doctor_id', $doctorId)
-                    ->where('patient_id', $patient->id)
-                    ->count(),
-                'last_appointment_date' => $lastAppointment?->appointment_date?->format('Y-m-d'),
-                'last_visit' => $lastClinicVisit?->visit_date?->format('Y-m-d')
-                    ?? $lastAppointment?->appointment_date?->format('Y-m-d'),
+                'total_visits' => (int) ($patient->total_visits ?? 0),
+                'last_visit' => $lastClinicVisit?->visit_date?->format('Y-m-d'),
             ];
         });
 
@@ -174,10 +166,7 @@ class DoctorDashboardService
         $doctor = Doctor::findOrFail($doctorId);
         $patient = User::where('id', $patientId)->where('role', 'patient')->firstOrFail();
 
-        $hasAccess = Appointment::where('doctor_id', $doctorId)
-            ->where('patient_id', $patientId)
-            ->exists()
-            || $patient->created_by_doctor_id === $doctor->user_id
+        $hasAccess = $patient->created_by_doctor_id === $doctor->user_id
             || ClinicPatient::where('doctor_id', $doctorId)->where('patient_id', $patientId)->exists();
 
         if (!$hasAccess) {
@@ -187,11 +176,6 @@ class DoctorDashboardService
         $clinicPatient = ClinicPatient::where('doctor_id', $doctorId)
             ->where('patient_id', $patientId)
             ->first();
-
-        $appointments = Appointment::where('doctor_id', $doctorId)
-            ->where('patient_id', $patientId)
-            ->orderByDesc('appointment_date')
-            ->get();
 
         $clinicBookings = ClinicBooking::where('doctor_id', $doctorId)
             ->where('patient_id', $patientId)
@@ -221,8 +205,7 @@ class DoctorDashboardService
             'allergies' => $clinicPatient?->allergies,
             'chronic_conditions' => $clinicPatient?->chronic_conditions,
             'medical_history' => $clinicPatient?->chronic_conditions,
-            'total_appointments' => $appointments->count(),
-            'total_visits' => $clinicBookings->count() ?: $appointments->count(),
+            'total_visits' => $clinicBookings->count(),
             'total_prescriptions' => $medicalRecords->where('record_type', 'prescription')->count(),
             'total_records' => $nonPrescriptionRecords->count(),
             'recent_visits' => $clinicBookings->take(5)->map(fn (ClinicBooking $booking) => [
@@ -233,15 +216,6 @@ class DoctorDashboardService
                 'status' => $booking->status,
                 'status_label' => $this->clinicBookingStatusLabel($booking->status),
                 'notes' => $booking->notes,
-            ])->values()->all(),
-            'recent_appointments' => $appointments->take(5)->map(fn ($a) => [
-                'id' => $a->id,
-                'source' => 'appointment',
-                'appointment_date' => $a->appointment_date?->format('Y-m-d'),
-                'appointment_time' => $this->formatTime($a->appointment_time),
-                'status' => $a->status,
-                'status_label' => $this->appointmentStatusLabel($a->status),
-                'notes' => $a->notes,
             ])->values()->all(),
             'medical_records' => $nonPrescriptionRecords
                 ->take(10)
@@ -417,17 +391,26 @@ class DoctorDashboardService
         return $doctor->fresh();
     }
 
-    public function getSchedules(int $doctorId): array
+    public function getSchedules(int $doctorId, ?int $branchId = null): array
     {
-        return DoctorSchedule::where('doctor_id', $doctorId)
-            ->where('is_active', true)
-            ->orderBy('day_of_week')
+        $query = DoctorSchedule::with('branch')
+            ->where('doctor_id', $doctorId)
+            ->where('is_active', true);
+
+        if ($branchId) {
+            $query->where(function ($q) use ($branchId) {
+                $q->where('doctor_branch_id', $branchId)->orWhereNull('doctor_branch_id');
+            });
+        }
+
+        return $query->orderBy('day_of_week')
             ->get()
             ->map(fn ($s) => [
                 'id' => $s->id,
                 'day_of_week' => ucfirst($s->day_of_week),
                 'start_time' => $this->formatTime($s->start_time),
                 'end_time' => $this->formatTime($s->end_time),
+                'branch_name' => $s->branch?->branch_name,
             ])
             ->all();
     }
@@ -455,18 +438,22 @@ class DoctorDashboardService
         $start = Carbon::create($year, $month, 1)->startOfMonth();
         $end = $start->copy()->endOfMonth();
 
-        $appointments = Appointment::where('doctor_id', $doctorId)
-            ->whereBetween('appointment_date', [$start, $end])
-            ->orderBy('appointment_time')
+        $bookings = ClinicBooking::where('doctor_id', $doctorId)
+            ->whereBetween('visit_date', [$start->toDateString(), $end->toDateString()])
+            ->with('patient')
+            ->orderBy('visit_date')
+            ->orderBy('booking_number')
             ->get();
 
         $grouped = [];
-        foreach ($appointments as $appointment) {
-            $date = $appointment->appointment_date->format('Y-m-d');
+        foreach ($bookings as $booking) {
+            $date = $booking->visit_date->format('Y-m-d');
             $grouped[$date][] = [
-                'id' => $appointment->id,
-                'time' => $this->formatTime($appointment->appointment_time),
-                'status' => $appointment->status,
+                'id' => $booking->id,
+                'booking_number' => $booking->display_booking_number,
+                'patient_name' => $booking->patient?->name,
+                'status' => $booking->status,
+                'status_label' => $this->clinicBookingStatusLabel($booking->status),
             ];
         }
 
@@ -541,17 +528,18 @@ class DoctorDashboardService
     public function createPrescription(int $doctorId, int $userId, array $data): MedicalRecord
     {
         return DB::transaction(function () use ($doctorId, $userId, $data) {
-            $appointmentId = null;
             $branchId = $data['branch_id'] ?? null;
             $clinicBookingId = $data['clinic_booking_id'] ?? null;
 
-            if (empty($clinicBookingId)) {
-                $appointment = $this->ensureWalkInAppointment($doctorId, (int) $data['patient_id']);
-                $appointmentId = $appointment->id;
+            if ($clinicBookingId) {
+                $booking = ClinicBooking::where('doctor_id', $doctorId)
+                    ->where('id', $clinicBookingId)
+                    ->firstOrFail();
+                $branchId = $branchId ?: $booking->branch_id;
             }
 
             return MedicalRecord::create([
-                'appointment_id' => $appointmentId,
+                'appointment_id' => null,
                 'doctor_id' => $doctorId,
                 'branch_id' => $branchId,
                 'patient_id' => $data['patient_id'],
@@ -670,28 +658,26 @@ class DoctorDashboardService
     public function createRecord(int $doctorId, int $userId, array $data, array $files = []): MedicalRecord
     {
         return DB::transaction(function () use ($doctorId, $userId, $data, $files) {
-            if (!empty($data['appointment_id'])) {
-                $appointment = Appointment::where('doctor_id', $doctorId)
-                    ->where('id', $data['appointment_id'])
-                    ->where('status', 'completed')
+            $patientId = (int) $data['patient_id'];
+            $clinicBookingId = $data['clinic_booking_id'] ?? null;
+            $branchId = $data['branch_id'] ?? null;
+
+            if ($clinicBookingId) {
+                $booking = ClinicBooking::where('doctor_id', $doctorId)
+                    ->where('id', $clinicBookingId)
                     ->firstOrFail();
-
-                if (MedicalRecord::where('appointment_id', $appointment->id)->exists()) {
-                    throw new \InvalidArgumentException('يوجد سجل طبي لهذا الموعد بالفعل');
-                }
-
-                $patientId = $appointment->patient_id;
-            } else {
-                $patientId = (int) $data['patient_id'];
-                $appointment = $this->ensureWalkInAppointment($doctorId, $patientId);
+                $patientId = $booking->patient_id;
+                $branchId = $branchId ?: $booking->branch_id;
             }
 
             $attachments = $this->uploadAttachments($files);
 
             return MedicalRecord::create([
-                'appointment_id' => $appointment->id,
+                'appointment_id' => null,
                 'doctor_id' => $doctorId,
+                'branch_id' => $branchId,
                 'patient_id' => $patientId,
+                'clinic_booking_id' => $clinicBookingId,
                 'record_type' => $this->mapRecordTypeToDb($data['type'] ?? 'diagnosis'),
                 'diagnosis' => $data['title'] ?? null,
                 'notes' => $this->buildRecordNotes($data),

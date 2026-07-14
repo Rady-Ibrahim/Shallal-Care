@@ -228,7 +228,7 @@ async function deletePrescription(prescriptionId) {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 </script>
 @endsection

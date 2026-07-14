@@ -23,7 +23,9 @@ Route::middleware(['session.scope:admin', 'web'])->group(function () {
             Route::get('/dashboard/doctors/{id}', fn () => view('admin.doctors.show'))->name('doctors.show');
             Route::get('/dashboard/patients', fn () => view('admin.patients.index'))->name('patients.index');
             Route::get('/dashboard/patients/{id}', fn () => view('admin.patients.show'))->name('patients.show');
-            Route::get('/dashboard/appointments', fn () => view('admin.appointments.index'))->name('appointments.index');
+            Route::redirect('/dashboard/appointments', '/admin/dashboard/clinic-bookings')->name('appointments.index');
+            Route::get('/dashboard/clinic-bookings', fn () => view('admin.clinic-bookings.index'))->name('clinic-bookings.index');
+            Route::get('/dashboard/clinic-patients', fn () => view('admin.clinic-patients.index'))->name('clinic-patients.index');
             Route::get('/dashboard/revenue', fn () => view('admin.revenue'))->name('revenue');
             Route::get('/dashboard/subscriptions', fn () => view('admin.subscriptions.index'))->name('subscriptions.index');
             Route::get('/dashboard/reviews', fn () => view('admin.reviews.index'))->name('reviews.index');
@@ -52,7 +54,9 @@ Route::middleware(['session.scope:admin', 'web'])->group(function () {
                 Route::post('/doctors/{id}/activate', [AdminDashboardApiController::class, 'activateDoctor']);
                 Route::get('/patients', [AdminDashboardApiController::class, 'patients']);
                 Route::get('/patients/{id}', [AdminDashboardApiController::class, 'patientDetails']);
+                Route::get('/clinic-patients', [AdminDashboardApiController::class, 'clinicPatients']);
                 Route::get('/appointments', [AdminDashboardApiController::class, 'appointments']);
+                Route::get('/clinic-bookings', [AdminDashboardApiController::class, 'clinicBookings']);
             Route::get('/revenue', [AdminDashboardApiController::class, 'revenue']);
             Route::get('/subscriptions', [AdminDashboardApiController::class, 'subscriptions']);
             Route::get('/subscriptions/plans', [AdminDashboardApiController::class, 'subscriptionPlans']);

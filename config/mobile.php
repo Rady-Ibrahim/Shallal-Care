@@ -4,10 +4,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Mobile API — Feature flags (disable, don't delete)
+    | Mobile API — Feature flags
     |--------------------------------------------------------------------------
-    | Simple production flow: directory browse + guest mode.
-    | Enable auth/booking in .env for Postman or when product decides.
+    | browse_only: directory (doctors/clinics/branches) + nearby.
+    | Booking is clinic-only (reception). Enable MOBILE_BOOKING_ENABLED later
+    | when patient mobile booking on clinic_bookings is implemented.
     */
 
     'enabled' => env('MOBILE_API_ENABLED', true),

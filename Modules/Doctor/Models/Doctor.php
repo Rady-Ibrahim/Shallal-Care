@@ -76,6 +76,11 @@ class Doctor extends Model
         );
     }
 
+    public function clinicBookings()
+    {
+        return $this->hasMany(ClinicBooking::class);
+    }
+
     public function reviews()
     {
         return $this->hasMany(\Modules\Review\Models\Review::class);
@@ -131,6 +136,11 @@ class Doctor extends Model
         $this->rating_count = $count;
         $this->rating = $count > 0 ? round((float) $stats->average, 2) : 0;
         $this->save();
+    }
+
+    public function hasActiveSubscription(): bool
+    {
+        return $this->activeSubscription() !== null;
     }
 
     public function hasFeaturedSubscription(): bool

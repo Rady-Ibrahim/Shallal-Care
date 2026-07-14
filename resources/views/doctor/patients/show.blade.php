@@ -195,14 +195,14 @@ function renderPatientDetails(patient) {
     document.getElementById('medicalHistory').textContent = patient.medical_history || 'لا يوجد تاريخ مرضي مسجّل';
 
     // Statistics
-    const totalVisits = patient.total_visits ?? patient.total_appointments ?? 0;
+    const totalVisits = patient.total_visits ?? 0;
     document.getElementById('totalAppointments').textContent = totalVisits;
     document.getElementById('totalAppointmentsCount').textContent = totalVisits;
     document.getElementById('totalPrescriptions').textContent = patient.total_prescriptions || 0;
     document.getElementById('totalRecords').textContent = patient.total_records || 0;
 
     // Recent visits
-    renderRecentAppointments(patient.recent_visits?.length ? patient.recent_visits : (patient.recent_appointments || []));
+    renderRecentAppointments(patient.recent_visits || []);
 
     // Medical Records
     renderMedicalRecords(patient.medical_records || []);
@@ -253,7 +253,7 @@ function renderRecentAppointments(appointments) {
                     <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusClass(appointment.status)}">
                         ${appointment.status_label || getStatusText(appointment.status)}
                     </span>
-                    ${appointment.id && appointment.source === 'clinic' ? `<a href="/doctor/dashboard/visits/${appointment.id}" class="text-xs text-blue-600">فتح الكشف</a>` : ''}
+                    ${appointment.id ? `<a href="/doctor/dashboard/visits/${appointment.id}" class="text-xs text-blue-600">فتح الكشف</a>` : ''}
                 </div>
             </div>
             ${appointment.notes ? `<p class="text-sm text-gray-600 mt-2">${appointment.notes}</p>` : ''}

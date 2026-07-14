@@ -31,6 +31,11 @@ class BranchTransaction extends Model
         return $this->belongsTo(DoctorBranch::class, 'branch_id');
     }
 
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(Doctor::class, 'doctor_id');
+    }
+
     public function booking(): BelongsTo
     {
         return $this->belongsTo(ClinicBooking::class, 'clinic_booking_id');

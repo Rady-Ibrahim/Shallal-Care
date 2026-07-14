@@ -108,4 +108,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(\Modules\Appointment\Models\Appointment::class, 'patient_id');
     }
+
+    public function clinicBookings()
+    {
+        return $this->hasMany(\Modules\Doctor\Models\ClinicBooking::class, 'patient_id');
+    }
 }

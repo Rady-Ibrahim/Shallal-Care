@@ -45,6 +45,8 @@
                 <tr>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الاسم</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">التخصص</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الفروع</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">حجوزات اليوم</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">التقييم</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الحالة</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">التاريخ</th>
@@ -53,7 +55,7 @@
             </thead>
             <tbody id="doctorsTableBody">
                 <tr class="text-center py-8">
-                    <td colspan="6" class="py-8">
+                    <td colspan="8" class="py-8">
                         <i class="fas fa-spinner fa-spin text-2xl text-blue-600 mb-2"></i>
                         <p class="text-gray-500">جاري التحميل...</p>
                     </td>
@@ -131,7 +133,7 @@ function renderDoctorsTable(doctors) {
     if (doctors.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                <td colspan="8" class="px-6 py-8 text-center text-gray-500">
                     <i class="fas fa-inbox text-4xl mb-2 text-gray-400"></i>
                     <p>لا توجد أطباء</p>
                 </td>
@@ -154,6 +156,8 @@ function renderDoctorsTable(doctors) {
                 </div>
             </td>
             <td class="px-6 py-4 text-gray-700">${doctor.speciality || 'غير محدد'}</td>
+            <td class="px-6 py-4 text-gray-700">${doctor.branches_count || 0}</td>
+            <td class="px-6 py-4 text-gray-700">${doctor.bookings_today || 0}</td>
             <td class="px-6 py-4">
                 <div class="flex items-center gap-1">
                     <i class="fas fa-star text-yellow-400"></i>
@@ -311,7 +315,7 @@ function getStatusText(status) {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 </script>
 @endsection

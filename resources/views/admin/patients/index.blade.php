@@ -1,8 +1,8 @@
 @extends('admin.layout')
 
 @section('title', 'إدارة المرضى')
-@section('page-title', 'المرضى')
-@section('page-description', 'إدارة بيانات المرضى والتحكم في حساباتهم')
+@section('page-title', 'حسابات المرضى')
+@section('page-description', 'حسابات مستخدمي تطبيق المنصة — للملفات داخل العيادات راجع «ملفات مرضى العيادات»')
 
 @section('content')
 <!-- Filters -->
@@ -18,7 +18,7 @@
             <select id="typeFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option value="">جميع الأنواع</option>
                 <option value="regular">عادي</option>
-                <option value="ghost">Ghost</option>
+                <option value="ghost">مريض بدون تطبيق</option>
             </select>
         </div>
         <div>
@@ -48,7 +48,7 @@
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الهاتف</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">النوع</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الحالة</th>
-                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">المواعيد</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الحجوزات</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">التاريخ</th>
                     <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">الإجراء</th>
                 </tr>
@@ -152,7 +152,7 @@ function renderPatientsTable(patients) {
                     ${patient.status === 'active' ? 'نشط' : 'محظور'}
                 </span>
             </td>
-            <td class="px-6 py-4 text-gray-700">${patient.total_appointments || 0}</td>
+            <td class="px-6 py-4 text-gray-700">${patient.total_bookings || patient.total_appointments || 0}</td>
             <td class="px-6 py-4 text-gray-600 text-sm">${formatDate(patient.created_at)}</td>
             <td class="px-6 py-4">
                 <div class="flex gap-2">
@@ -277,7 +277,7 @@ async function deletePatient(patientId) {
 
 function formatDate(date) {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('ar-IQ');
+    return new Date(date).toLocaleDateString('ar-EG');
 }
 </script>
 @endsection

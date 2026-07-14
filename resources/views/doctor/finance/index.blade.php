@@ -11,12 +11,18 @@
     <input type="date" id="reportDate" value="{{ today()->format('Y-m-d') }}"
       class="border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
   </div>
-  @if($canManageFinance)
-  <button type="button" id="openExpenseModal"
-    class="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold">
-    + تسجيل مصروف
-  </button>
-  @endif
+  <div class="flex gap-2">
+    <a href="/doctor/dashboard/finance/print" target="_blank" id="printReportLink"
+      class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50">
+      <i class="fas fa-print ml-1"></i> طباعة التقرير
+    </a>
+    @if($canManageFinance)
+    <button type="button" id="openExpenseModal"
+      class="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold">
+      + تسجيل مصروف
+    </button>
+    @endif
+  </div>
 </div>
 
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -186,7 +192,15 @@ async function refreshAll() {
   await Promise.all([loadSummary(), loadTransactions()]);
 }
 
-document.getElementById('reportDate').addEventListener('change', refreshAll);
+function updatePrintLink() {
+  const link = document.getElementById('printReportLink');
+  if (link) link.href = '/doctor/dashboard/finance/print?date=' + selectedDate();
+}
+
+document.getElementById('reportDate').addEventListener('change', () => {
+  updatePrintLink();
+  refreshAll();
+});
 
 document.querySelectorAll('.type-filter').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -221,6 +235,7 @@ document.getElementById('expenseForm')?.addEventListener('submit', async (e) => 
 @endif
 
 window.addEventListener('load', () => {
+  updatePrintLink();
   document.querySelector('.type-filter[data-type="all"]')?.classList.add('bg-blue-100', 'border-blue-300');
   refreshAll();
 });

@@ -37,7 +37,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">المبلغ المُحوّل (د.ع)</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">المبلغ المُحوّل ({{ config('clinic.currency_symbol') }})</label>
                 <input type="number" id="submittedAmount" required readonly
                     class="w-full px-4 py-2 border rounded-lg bg-gray-50">
                 <p class="text-xs text-gray-500 mt-1">يجب أن يساوي سعر الباقة بالضبط</p>
@@ -174,7 +174,7 @@ function copyText(text) {
 }
 
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('ar-IQ', { style: 'currency', currency: 'IQD', minimumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('ar-EG', { style: 'decimal', minimumFractionDigits: 0 }).format(amount || 0) + ' {{ config('clinic.currency_symbol') }}';
 }
 </script>
 @endsection

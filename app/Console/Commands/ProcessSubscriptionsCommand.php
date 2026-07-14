@@ -17,10 +17,18 @@ class ProcessSubscriptionsCommand extends Command
 
     public function handle(): int
     {
-        $expired = DoctorSubscription::where('status', 'active')
+        $expiring = DoctorSubscription::with('doctor')
+            ->where('status', 'active')
             ->whereNotNull('end_date')
             ->whereDate('end_date', '<', today())
-            ->update(['status' => 'expired']);
+            ->get();
+
+        $expired = 0;
+        foreach ($expiring as $sub) {
+            $sub->update(['status' => 'expired']);
+            $sub->doctor?->update(['subscription_id' => null]);
+            $expired++;
+        }
 
         $this->info("Marked {$expired} subscription(s) as expired.");
 

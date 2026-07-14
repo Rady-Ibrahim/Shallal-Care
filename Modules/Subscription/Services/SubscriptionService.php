@@ -5,6 +5,7 @@ namespace Modules\Subscription\Services;
 use Modules\Subscription\Models\Subscription;
 use Modules\Subscription\Models\DoctorSubscription;
 use Modules\Doctor\Models\Doctor;
+use Modules\Doctor\Models\ClinicBooking;
 use App\Notifications\DoctorSubscriptionRequested;
 use App\Services\AdminNotificationService;
 use Illuminate\Support\Facades\DB;
@@ -286,28 +287,54 @@ class SubscriptionService
             ->first();
     }
 
-    public function checkDoctorSubscriptionLimit($doctorId)
+    public function checkDoctorSubscriptionLimit($doctorId): bool
+    {
+        $status = $this->getClinicBookingLimitStatus((int) $doctorId);
+
+        return $status['can_create_booking'];
+    }
+
+    public function getClinicBookingLimitStatus(int $doctorId): array
     {
         $subscription = $this->getDoctorSubscription($doctorId);
-        
-        if (!$subscription) {
-            return false;
+
+        if (! $subscription) {
+            return [
+                'has_active_subscription' => false,
+                'can_create_booking' => false,
+                'monthly_bookings_used' => 0,
+                'monthly_bookings_limit' => null,
+            ];
         }
 
         $plan = $subscription->subscription;
-        
-        // If max_appointments is null, it means unlimited
-        if ($plan->max_appointments === null) {
-            return true;
-        }
-
-        // Count appointments in current month
-        $monthlyAppointments = \Modules\Appointment\Models\Appointment::where('doctor_id', $doctorId)
+        $used = ClinicBooking::where('doctor_id', $doctorId)
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->count();
 
-        return $monthlyAppointments < $plan->max_appointments;
+        $limit = $plan?->max_appointments;
+
+        return [
+            'has_active_subscription' => true,
+            'can_create_booking' => $limit === null || $used < $limit,
+            'monthly_bookings_used' => $used,
+            'monthly_bookings_limit' => $limit,
+            'plan_name' => $plan?->name,
+        ];
+    }
+
+    public function assertCanCreateClinicBooking(int $doctorId): void
+    {
+        if (! $this->getDoctorSubscription($doctorId)) {
+            throw new \InvalidArgumentException('لا يوجد اشتراك نشط للعيادة. يرجى تجديد الاشتراك أولاً.');
+        }
+
+        $status = $this->getClinicBookingLimitStatus($doctorId);
+        if (! $status['can_create_booking']) {
+            $limit = $status['monthly_bookings_limit'];
+            throw new \InvalidArgumentException("تم الوصول للحد الشهري للحجوزات ({$limit} حجز). يرجى ترقية الباقة.");
+        }
     }
 
     public function seedDefaultPlans()

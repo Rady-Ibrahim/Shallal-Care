@@ -83,7 +83,7 @@
                 <input id="planDuration" type="number" min="1" class="mt-1 w-full border rounded-lg px-3 py-2" required>
             </div>
             <div>
-                <label class="text-sm font-semibold text-gray-700">حد المواعيد (اختياري)</label>
+                <label class="text-sm font-semibold text-gray-700">حد الحجوزات الشهري (اختياري)</label>
                 <input id="planMaxAppointments" type="number" min="1" class="mt-1 w-full border rounded-lg px-3 py-2">
             </div>
             <div>
@@ -344,7 +344,7 @@ function statusText(s) {
     return ({ active: 'نشط', expired: 'منتهي', pending_payment: 'بانتظار الدفع', cancelled: 'ملغي' })[s] || s;
 }
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('ar-IQ', { style: 'currency', currency: 'IQD', minimumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('ar-EG', { style: 'decimal', minimumFractionDigits: 0 }).format(amount || 0) + ' ج.م';
 }
 </script>
 @endsection
