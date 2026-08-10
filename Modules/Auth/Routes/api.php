@@ -12,12 +12,12 @@ Route::prefix('auth')->group(function () {
         ->middleware('mobile.feature:guest');
 
     Route::middleware('mobile.feature:auth')->group(function () {
-        Route::post('register', [AuthController::class, 'register']);
-        Route::post('login', [AuthController::class, 'login']);
-        Route::post('send-otp', [AuthController::class, 'sendOtp']);
-        Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
-        Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-        Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        Route::post('register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+        Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+        Route::post('send-otp', [AuthController::class, 'sendOtp'])->middleware('throttle:3,1');
+        Route::post('verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
+        Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+        Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
     });
 
     Route::middleware('auth:sanctum')->group(function () {

@@ -52,13 +52,13 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         $identifier = $request->email ?: $request->phone;
-    
+
         $field = filter_var($identifier, FILTER_VALIDATE_EMAIL)
             ? 'email'
             : 'phone';
-    
+
         $user = User::where($field, $identifier)->first();
-    
+
         if (!$user) {
             return $this->error(
                 'بيانات الدخول غير صحيحة',
@@ -82,7 +82,7 @@ class AuthController extends Controller
                 403
             );
         }
-    
+
         if ($user->email && !$user->email_verified_at) {
             return $this->error(
                 'يرجى تفعيل البريد الإلكتروني أولاً',
@@ -90,12 +90,22 @@ class AuthController extends Controller
                 403
             );
         }
-    
-        $user = $this->authService->login(
-            $identifier,
-            $request->password
-        );
-    
+
+        try {
+            $user = $this->authService->login(
+                $identifier,
+                $request->password
+            );
+        } catch (\Throwable $e) {
+            Log::error('Login failure: ' . $e->getMessage(), [
+                'identifier' => $identifier,
+                'exception'  => $e,
+                'trace'      => $e->getTraceAsString(),
+            ]);
+
+            return $this->serverError('تعذر إتمام تسجيل الدخول');
+        }
+
         if (!$user) {
             return $this->error(
                 'بيانات الدخول غير صحيحة',
@@ -103,9 +113,18 @@ class AuthController extends Controller
                 401
             );
         }
-    
-        $token = $this->authService->createToken($user);
-    
+
+        try {
+            $token = $this->authService->createToken($user);
+        } catch (\Throwable $e) {
+            Log::error('Token creation failed: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
+            return $this->serverError('تعذر إنشاء جلسة الدخول');
+        }
+
         return $this->success([
             'user' => [
                 'id' => $user->id,
@@ -154,8 +173,13 @@ class AuthController extends Controller
                 'type' => $request->type,
             ], 'تم إرسال الكود بنجاح');
     
-        } catch (\Exception $e) {
-            return $this->serverError($e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Send OTP failed: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
+            return $this->serverError('تعذر إرسال الكود');
         }
     }
 
